@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\AuthController;
+use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,5 +26,8 @@ Route::prefix('v1')->group(function () {
                 'data' => $request->user()
             ]);
         });
+
+        // Get all Users
+        Route::apiResource('users', UserController::class);
     });
 });
