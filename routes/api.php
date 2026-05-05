@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\AuthController;
+use App\Http\Controllers\API\V1\FamilyController;
 use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,5 +30,8 @@ Route::prefix('v1')->group(function () {
 
         // Get all Users
         Route::apiResource('users', UserController::class);
+
+        // Tambahkan route untuk resource lainnya seperti Family, Household, dll
+        Route::apiResource('families', FamilyController::class);
     });
 });
