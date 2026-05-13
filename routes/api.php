@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\V1\AuthController;
 use App\Http\Controllers\API\V1\FamilyController;
+use App\Http\Controllers\API\V1\RondaController;
 use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -33,5 +34,10 @@ Route::prefix('v1')->group(function () {
 
         // Tambahkan route untuk resource lainnya seperti Family, Household, dll
         Route::apiResource('families', FamilyController::class);
+
+        // Ronda Route
+        Route::get('/ronda/schedules', [RondaController::class, 'index']);
+        Route::post('/ronda/attendance', [RondaController::class, 'attendance']);
+        Route::post('/ronda/groups', [RondaController::class, 'storeGroup']);
     });
 });
