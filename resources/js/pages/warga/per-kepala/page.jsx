@@ -37,7 +37,12 @@ export default function WargaPerKepalaPage() {
             <Head title="List per Kepala Keluarga - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">List per Kepala Keluarga</h1>
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">List per Kepala Keluarga</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Lihat keluarga berdasarkan kepala keluarga dan akses detail pengelolaannya.
+                    </p>
+                </div>
                 
                 <div className="mb-6 flex justify-between items-center">
                     <Input 

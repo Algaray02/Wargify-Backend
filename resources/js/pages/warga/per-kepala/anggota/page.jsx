@@ -34,8 +34,13 @@ export default function AnggotaKeluargaPage() {
             <Head title="Anggota Keluarga - Wargify" />
             
             <div className="p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Kelola Anggota Keluarga Tatang Sutarma</h1>
+                <div className="flex justify-between items-start mb-8 gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Kelola Anggota Keluarga Tatang Sutarma</h1>
+                        <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                            Perbarui anggota yang terdaftar pada keluarga ini.
+                        </p>
+                    </div>
                     
                     <Link href="/warga/per-kepala/anggota/tambah">
                         <Button className="bg-[#00468B] hover:bg-[#003366] text-white">

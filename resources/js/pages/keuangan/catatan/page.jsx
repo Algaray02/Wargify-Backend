@@ -45,8 +45,13 @@ export default function CatatanKeuanganPage() {
             <Head title="Catatan Keuangan - Wargify" />
             
             <div className="p-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Catatan Keuangan</h1>
+                <div className="flex justify-between items-start mb-6 gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Catatan Keuangan</h1>
+                        <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                            Lacak pemasukan, pengeluaran, dan bukti transaksi lingkungan.
+                        </p>
+                    </div>
                     
                     <Select defaultValue="semua_jenis">
                         <SelectTrigger className="w-[180px] bg-white">
@@ -91,7 +96,7 @@ export default function CatatanKeuanganPage() {
                                                 </Button>
                                             </DialogTrigger>
                                             <DialogContent className="sm:max-w-md p-0 border-none bg-transparent shadow-none">
-                                                <div className="bg-white p-8 max-w-sm mx-auto font-mono text-sm relative overflow-hidden flex flex-col items-center border border-gray-200" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+                                                <div className="bg-white p-8 max-w-sm mx-auto font-mono text-sm relative overflow-hidden flex flex-col items-center border border-gray-200">
                                                     <div className="absolute inset-0 bg-white/90 z-0"></div>
                                                     
                                                     <div className="relative z-10 w-full">

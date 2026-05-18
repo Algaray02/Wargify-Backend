@@ -26,12 +26,12 @@ export default function EditIuranPage() {
                 <div className="ml-12 space-y-6 max-w-3xl">
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
                         <Label htmlFor="nama" className="text-sm font-medium text-gray-900">Nama Iuran</Label>
-                        <Input id="nama" defaultValue="@peduarte" className="border-gray-300 focus-visible:ring-[#00468B]" />
+                        <Input id="nama" defaultValue="Iuran Bulanan" className="border-gray-300 focus-visible:ring-[#00468B]" />
                     </div>
                     
                     <div className="grid grid-cols-[150px_1fr] items-start gap-4">
                         <Label htmlFor="deskripsi" className="text-sm font-medium text-gray-900 pt-3">Deskripsi</Label>
-                        <Textarea id="deskripsi" defaultValue="@peduarte" className="min-h-[150px] border-gray-300 focus-visible:ring-[#00468B] resize-none" />
+                        <Textarea id="deskripsi" defaultValue="Iuran operasional lingkungan bulan berjalan." className="min-h-[150px] border-gray-300 focus-visible:ring-[#00468B] resize-none" />
                     </div>
 
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
@@ -41,7 +41,7 @@ export default function EditIuranPage() {
 
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
                         <Label htmlFor="jumlah" className="text-sm font-medium text-gray-900">Jumlah untuk dibayar</Label>
-                        <Input id="jumlah" defaultValue="@peduarte" className="border-gray-300 focus-visible:ring-[#00468B]" />
+                        <Input id="jumlah" defaultValue="Rp100.000" className="border-gray-300 focus-visible:ring-[#00468B]" />
                     </div>
 
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
@@ -61,7 +61,7 @@ export default function EditIuranPage() {
 
                     <div className="flex justify-end pt-8">
                         <Button className="bg-[#00468B] hover:bg-[#003366] text-white">
-                            Save changes
+                            Simpan Perubahan
                         </Button>
                     </div>
                 </div>

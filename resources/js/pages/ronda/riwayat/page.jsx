@@ -55,7 +55,12 @@ export default function RiwayatRondaPage() {
             <Head title="Riwayat Ronda - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Riwayat Pelaksanaan Ronda</h1>
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">Riwayat Pelaksanaan Ronda</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Evaluasi pelaksanaan ronda, kehadiran, checkpoint, dan durasi patroli.
+                    </p>
+                </div>
                 
                 <div className="mb-6 flex items-center gap-4 max-w-2xl">
                     <Input 

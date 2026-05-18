@@ -84,8 +84,13 @@ export default function CheckpointRondaPage() {
             
             <div className="p-8">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-8 max-w-4xl">
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Checkpoint Ronda</h1>
+                <div className="flex justify-between items-start mb-8 max-w-5xl gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Checkpoint Ronda</h1>
+                        <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                            Kelola titik scan ronda dan tandai pos utama untuk koordinasi petugas.
+                        </p>
+                    </div>
                     <Button 
                         onClick={handleOpenAdd}
                         className="bg-[#00468B] hover:bg-[#003366] text-white flex items-center shadow-md"
@@ -96,10 +101,10 @@ export default function CheckpointRondaPage() {
                 </div>
                 
                 {/* Checkpoint list */}
-                <div className="max-w-4xl space-y-4">
+                <div className="grid max-w-5xl gap-4 lg:grid-cols-2">
                     {checkpoints.map((item) => (
                         <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white border border-gray-100">
-                            <CardContent className="p-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                            <CardContent className="p-5 flex flex-col gap-5">
                                 <div className="space-y-1">
                                     <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                                         {item.nama}
@@ -115,14 +120,14 @@ export default function CheckpointRondaPage() {
                                     )}
                                 </div>
                                 
-                                <div className="flex gap-2">
-                                    <Button className="bg-[#00468B] hover:bg-[#003366] text-white flex items-center">
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Button className="flex-1 bg-[#00468B] hover:bg-[#003366] text-white">
                                         <QrCode className="w-4 h-4 mr-2" />
                                         Lihat Kode QR
                                     </Button>
                                     <Button 
                                         onClick={() => handleOpenEdit(item)}
-                                        className="bg-[#00468B] hover:bg-[#003366] text-white flex items-center"
+                                        className="flex-1 bg-[#00468B] hover:bg-[#003366] text-white"
                                     >
                                         <SquarePen className="w-4 h-4 mr-2" />
                                         Edit
@@ -154,7 +159,7 @@ export default function CheckpointRondaPage() {
                                         id="nama" 
                                         value={selectedCheckpoint.nama} 
                                         onChange={(e) => setSelectedCheckpoint({...selectedCheckpoint, nama: e.target.value})}
-                                        placeholder="@peduarte" 
+                                        placeholder="Contoh: Pos Ronda Utama" 
                                         className="border-gray-300 focus-visible:ring-[#00468B]" 
                                     />
                                 </div>
@@ -196,7 +201,6 @@ export default function CheckpointRondaPage() {
                                 </div>
                             </div>
 
-                            {/* Save changes button */}
                             <div className="flex justify-end gap-3 mt-8">
                                 <DialogClose asChild>
                                     <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100">
@@ -207,7 +211,7 @@ export default function CheckpointRondaPage() {
                                     onClick={handleSave}
                                     className="bg-[#00468B] hover:bg-[#003366] text-white px-6"
                                 >
-                                    Save changes
+                                    Simpan Perubahan
                                 </Button>
                             </div>
                         </DialogContent>

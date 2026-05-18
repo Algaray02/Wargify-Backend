@@ -46,7 +46,12 @@ export default function WargaPerWargaPage() {
             <Head title="List per Warga - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">List per Warga</h1>
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">List per Warga</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Kelola data individu warga, status keluarga, dan kontak utama.
+                    </p>
+                </div>
                 
                 <div className="mb-6 flex justify-between items-center gap-4">
                     <div className="flex flex-1 gap-2 max-w-2xl">

@@ -44,7 +44,7 @@ export default function LaporanFasilitasDetailPage() {
             <div className="p-8 max-w-5xl">
                 {/* State Switcher for Demo (Extremely useful for review) */}
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-4 max-w-4xl">
-                    <span className="text-sm font-semibold text-blue-800">Demo Live State Switcher:</span>
+                    <span className="text-sm font-semibold text-blue-800">Status laporan:</span>
                     <div className="flex gap-2">
                         {["Belum ditangani", "Dalam Pengerjaan", "Selesai"].map((stateOption) => (
                             <button
@@ -177,7 +177,7 @@ export default function LaporanFasilitasDetailPage() {
                                                         </DialogClose>
                                                         <Button 
                                                             onClick={handleSaveRespon}
-                                                            className="bg-black hover:bg-gray-800 text-white px-6 rounded-xl"
+                                                            className="bg-[#00468B] hover:bg-[#003366] text-white px-6 rounded-xl"
                                                         >
                                                             Simpan
                                                         </Button>
@@ -212,7 +212,7 @@ export default function LaporanFasilitasDetailPage() {
                                 <div className="flex justify-end">
                                     <Button 
                                         onClick={handleTangani}
-                                        className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-xl shadow-sm font-semibold"
+                                        className="bg-[#00468B] hover:bg-[#003366] text-white px-6 py-2.5 rounded-xl shadow-sm font-semibold"
                                     >
                                         Tangani
                                     </Button>
@@ -250,7 +250,7 @@ export default function LaporanFasilitasDetailPage() {
                                 <div className="flex justify-end pt-2">
                                     <Button 
                                         onClick={handleSelesaikan}
-                                        className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-xl shadow-sm font-semibold"
+                                        className="bg-[#00468B] hover:bg-[#003366] text-white px-6 py-2.5 rounded-xl shadow-sm font-semibold"
                                     >
                                         Selesaikan
                                     </Button>

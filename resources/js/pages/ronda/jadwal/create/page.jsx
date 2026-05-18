@@ -201,7 +201,7 @@ export default function TambahJadwalRondaPage() {
                 {/* Submit button */}
                 <div className="flex justify-end ml-12 pt-4">
                     <Button className="bg-[#00468B] hover:bg-[#003366] text-white px-6 py-2 shadow-md">
-                        Save changes
+                        Simpan Perubahan
                     </Button>
                 </div>
             </div>

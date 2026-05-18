@@ -35,7 +35,12 @@ export default function DataIuranPage() {
             <Head title="Data Iuran - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Data Iuran</h1>
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">Data Iuran</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Kelola skema iuran, tenggat pembayaran, dan QR untuk warga.
+                    </p>
+                </div>
                 
                 <div className="mb-6 flex justify-between items-center gap-4">
                     <Input 

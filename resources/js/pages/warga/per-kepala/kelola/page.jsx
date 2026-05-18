@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { Home, QrCode, UsersRound } from 'lucide-react';
 
 export default function KelolaKeluargaPage() {
     return (
@@ -8,45 +9,52 @@ export default function KelolaKeluargaPage() {
             <Head title="Kelola Keluarga - Wargify" />
             
             <div className="p-8 max-w-5xl">
-                <h1 className="text-3xl font-bold text-gray-900 mb-10">Kelola Keluarga pak Tatang Sutarma</h1>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Kelola Keluarga Pak Tatang Sutarma</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Pilih area data keluarga yang ingin diperbarui.
+                    </p>
+                </div>
                 
-                <div className="border-2 border-[#00468B]/20 rounded-xl overflow-hidden bg-white shadow-sm max-w-4xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#00468B]/10">
-                        {/* Option 1 */}
+                <div className="grid max-w-4xl gap-4 md:grid-cols-3">
                         <Link 
                             href="/warga/per-kepala/anggota" 
-                            className="p-8 hover:bg-gray-50 transition-colors block group"
+                            className="rounded-2xl border border-[#00468B]/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#00468B]/25 hover:shadow-lg"
                         >
-                            <h3 className="text-sm font-bold text-gray-900 mb-2 group-hover:text-[#00468B]">Anggota keluarga</h3>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                Kelola siapa saja yang menjadi<br/>anggota keluarga ini
+                            <div className="mb-5 grid size-12 place-items-center rounded-xl bg-[#E6F6FF] text-[#00468B]">
+                                <UsersRound className="size-6" />
+                            </div>
+                            <h3 className="text-base font-black text-gray-900 mb-2">Anggota keluarga</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Kelola siapa saja yang menjadi anggota keluarga ini.
                             </p>
                         </Link>
                         
-                        {/* Option 2 */}
                         <Link 
                             href="#" 
-                            className="p-8 hover:bg-gray-50 transition-colors block group"
+                            className="rounded-2xl border border-[#00468B]/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#00468B]/25 hover:shadow-lg"
                         >
-                            <h3 className="text-sm font-bold text-gray-900 mb-2 group-hover:text-[#00468B]">Tempat tinggal</h3>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                Kelola tempat tinggal yang ditinggali<br/>oleh keluarga ini
+                            <div className="mb-5 grid size-12 place-items-center rounded-xl bg-[#E6F6FF] text-[#00468B]">
+                                <Home className="size-6" />
+                            </div>
+                            <h3 className="text-base font-black text-gray-900 mb-2">Tempat tinggal</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Kelola alamat dan tempat tinggal keluarga ini.
                             </p>
                         </Link>
-                    </div>
-                    
-                    <div className="border-t border-[#00468B]/10">
-                        {/* Option 3 */}
+
                         <Link 
                             href="#" 
-                            className="p-8 hover:bg-gray-50 transition-colors block group w-full md:w-1/2"
+                            className="rounded-2xl border border-[#00468B]/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#00468B]/25 hover:shadow-lg"
                         >
-                            <h3 className="text-sm font-bold text-gray-900 mb-2 group-hover:text-[#00468B]">Kode QR</h3>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                Kelola kode QR untuk keperluan<br/>administrasi
+                            <div className="mb-5 grid size-12 place-items-center rounded-xl bg-[#E6F6FF] text-[#00468B]">
+                                <QrCode className="size-6" />
+                            </div>
+                            <h3 className="text-base font-black text-gray-900 mb-2">Kode QR</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Kelola kode QR untuk keperluan administrasi.
                             </p>
                         </Link>
-                    </div>
                 </div>
             </div>
         </DashboardLayout>

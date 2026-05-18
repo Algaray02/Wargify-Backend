@@ -43,7 +43,12 @@ export default function DaftarKegiatanPage() {
             <Head title="Daftar Kegiatan - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Daftar Kegiatan</h1>
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">Daftar Kegiatan</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Pantau status agenda warga, jenis kegiatan, dan lokasi pelaksanaan.
+                    </p>
+                </div>
                 
                 <div className="mb-6 flex justify-between items-center gap-4">
                     <div className="flex flex-1 gap-4 max-w-3xl">

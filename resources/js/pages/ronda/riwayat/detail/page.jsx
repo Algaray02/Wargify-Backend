@@ -55,12 +55,12 @@ export default function DetailPelaksanaanRondaPage() {
                 </div>
 
                 {/* Details Table */}
-                <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm mb-10 max-w-2xl">
+                <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm mb-10 max-w-3xl">
                     <table className="w-full border-collapse">
                         <tbody>
                             {details.map((detail, index) => (
                                 <tr key={index} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/30 transition-colors">
-                                    <td className="w-[200px] bg-[#00468B] text-white font-semibold text-sm px-6 py-4 border-r border-blue-400/30">
+                                    <td className="w-[220px] bg-[#00468B] text-white font-semibold text-sm px-6 py-4 border-r border-blue-400/30">
                                         {detail.label}
                                     </td>
                                     <td className="px-6 py-4 text-gray-900 text-sm font-medium flex justify-between items-center">
@@ -115,7 +115,7 @@ export default function DetailPelaksanaanRondaPage() {
                 {/* GPS Tracking Section */}
                 <div className="space-y-4">
                     <h2 className="text-2xl font-bold text-gray-900 tracking-tight">GPS Tracking</h2>
-                    <div className="max-w-2xl overflow-hidden rounded-2xl shadow-md border border-gray-150 bg-white">
+                    <div className="max-w-3xl overflow-hidden rounded-2xl shadow-md border border-gray-150 bg-white">
                         <img 
                             src="/ronda_gps_map.png" 
                             alt="GPS Tracking Map" 

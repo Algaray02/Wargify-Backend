@@ -29,15 +29,15 @@ export default function KelompokRondaPage() {
         <DashboardLayout>
             <Head title="Kelompok Ronda - Wargify" />
             
-            <div className="p-8 max-w-xl">
+            <div className="p-8 max-w-3xl">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">Kelompok Ronda</h1>
-                    <p className="text-gray-600 text-lg">Atur Kelompok Ronda</p>
+                    <p className="text-sm font-medium text-gray-500">Atur pembagian kelompok ronda agar jadwal lebih mudah dikelola.</p>
                 </div>
                 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 rounded-2xl border border-[#00468B]/10 bg-white p-5 shadow-sm">
                     {groups.map((group, index) => (
-                        <div key={group.id} className="flex gap-3 items-center">
+                        <div key={group.id} className="flex flex-col gap-3 rounded-xl bg-[#ebf3f9] p-3 sm:flex-row sm:items-center">
                             <Select defaultValue={group.name}>
                                 <SelectTrigger className="flex-1 bg-white border-gray-300 focus:ring-[#00468B] h-10">
                                     <SelectValue placeholder="Pilih Kelompok" />
@@ -57,7 +57,7 @@ export default function KelompokRondaPage() {
                     ))}
                     
                     {/* Action buttons centered/aligned beneath */}
-                    <div className="flex gap-3 mt-6 justify-center max-w-sm ml-auto mr-auto md:ml-0 md:mr-0">
+                    <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:justify-end">
                         <Button 
                             variant="outline" 
                             className="text-[#00468B] border-[#00468B] hover:bg-blue-50 h-10 px-4 flex items-center"
@@ -67,7 +67,7 @@ export default function KelompokRondaPage() {
                             Tambah Kelompok
                         </Button>
                         <Button className="bg-[#00468B] hover:bg-[#003366] text-white h-10 px-6 shadow-sm">
-                            Save changes
+                            Simpan Perubahan
                         </Button>
                     </div>
                 </div>

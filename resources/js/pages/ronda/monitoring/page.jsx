@@ -58,14 +58,15 @@ export default function MonitoringRondaPage() {
                     </h1>
                 </div>
 
-                <div className="ml-12 mb-8">
-                    <h2 className="text-xl font-bold text-gray-900">
-                        Waktu Berjalan: <span className="font-mono text-[#00468B]">{formatTime(seconds)}</span>
+                <div className="mb-8 rounded-2xl border border-[#00468B]/10 bg-white p-5 shadow-sm">
+                    <p className="text-sm font-bold uppercase text-gray-500">Waktu Berjalan</p>
+                    <h2 className="mt-2 font-mono text-4xl font-black text-[#00468B]">
+                        {formatTime(seconds)}
                     </h2>
                 </div>
 
                 {/* GPS Tracking Map */}
-                <div className="ml-12 mb-10 max-w-2xl overflow-hidden rounded-2xl shadow-md border border-gray-150 bg-white">
+                <div className="mb-10 max-w-3xl overflow-hidden rounded-2xl shadow-md border border-gray-150 bg-white">
                     <img 
                         src="/ronda_gps_map.png" 
                         alt="GPS Tracking Map" 
@@ -74,7 +75,7 @@ export default function MonitoringRondaPage() {
                 </div>
 
                 {/* Anggota Ronda Checklist */}
-                <div className="ml-12 mb-10 max-w-2xl">
+                <div className="mb-10 max-w-3xl">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">Anggota Ronda</h3>
                     <div className="rounded-xl border border-gray-150 overflow-hidden bg-white shadow-sm">
                         <Table>
@@ -113,7 +114,7 @@ export default function MonitoringRondaPage() {
                 </div>
 
                 {/* Checkpoint Ronda Checklist */}
-                <div className="ml-12 mb-4 max-w-lg">
+                <div className="mb-4 max-w-2xl">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">Checkpoint Ronda</h3>
                     <div className="rounded-xl border border-gray-150 overflow-hidden bg-white shadow-sm">
                         <Table>

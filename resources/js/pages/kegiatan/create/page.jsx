@@ -33,17 +33,17 @@ export default function CreateKegiatanPage() {
                 <div className="ml-12 space-y-6 max-w-3xl">
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
                         <Label htmlFor="nama" className="text-sm font-medium text-gray-900">Nama Kegiatan</Label>
-                        <Input id="nama" placeholder="@peduarte" className="border-gray-300 focus-visible:ring-[#00468B]" />
+                        <Input id="nama" placeholder="Contoh: Rapat warga bulanan" className="border-gray-300 focus-visible:ring-[#00468B]" />
                     </div>
                     
                     <div className="grid grid-cols-[150px_1fr] items-start gap-4">
                         <Label htmlFor="deskripsi" className="text-sm font-medium text-gray-900 pt-3">Deskripsi</Label>
-                        <Textarea id="deskripsi" placeholder="@peduarte" className="min-h-[150px] border-gray-300 focus-visible:ring-[#00468B] resize-none" />
+                        <Textarea id="deskripsi" placeholder="Tulis ringkasan kegiatan" className="min-h-[150px] border-gray-300 focus-visible:ring-[#00468B] resize-none" />
                     </div>
 
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
                         <Label htmlFor="lokasi" className="text-sm font-medium text-gray-900">Lokasi</Label>
-                        <Input id="lokasi" placeholder="@peduarte" className="border-gray-300 focus-visible:ring-[#00468B]" />
+                        <Input id="lokasi" placeholder="Contoh: Balai warga" className="border-gray-300 focus-visible:ring-[#00468B]" />
                     </div>
 
                     <div className="grid grid-cols-[150px_1fr] items-center gap-4">
@@ -101,7 +101,7 @@ export default function CreateKegiatanPage() {
 
                     <div className="flex justify-end pt-8">
                         <Button className="bg-[#00468B] hover:bg-[#003366] text-white">
-                            Save changes
+                            Simpan Perubahan
                         </Button>
                     </div>
                 </div>

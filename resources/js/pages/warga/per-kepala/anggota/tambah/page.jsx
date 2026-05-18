@@ -26,7 +26,7 @@ import {
 
 export default function TambahAnggotaKeluargaPage() {
     const dummyData = Array(8).fill({
-        nama: 'Orang ga tau',
+        nama: 'Warga Belum Terdaftar',
         umur: 30,
         status: 'Anggota Keluarga',
         telp: '08123456789',
@@ -38,7 +38,12 @@ export default function TambahAnggotaKeluargaPage() {
             <Head title="Tambah Anggota Keluarga - Wargify" />
             
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8 max-w-2xl">Tambah Anggota Untuk Keluarga Tatang Sutarma</h1>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 max-w-2xl">Tambah Anggota Untuk Keluarga Tatang Sutarma</h1>
+                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                        Pilih warga yang akan dimasukkan ke dalam keluarga ini.
+                    </p>
+                </div>
                 
                 <div className="flex justify-between items-center mb-6">
                     <Input 
