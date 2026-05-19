@@ -3,26 +3,23 @@ import { Head } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, ListPlus } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from '@/components/ui/input';
+import { useCreateRondaGroup, useRondaGroups } from '@/hooks/useRonda';
 
 export default function KelompokRondaPage() {
-    const [groups, setGroups] = useState([
-        { id: 1, name: "kelompok_1" },
-        { id: 2, name: "kelompok_2" },
-        { id: 3, name: "kelompok_3" },
-        { id: 4, name: "kelompok_1" },
-        { id: 5, name: "kelompok_1" },
-        { id: 6, name: "kelompok_1" },
-    ]);
+    const [newGroupName, setNewGroupName] = useState('');
+    const { data: groups = [], isLoading, isError } = useRondaGroups();
+    const createGroup = useCreateRondaGroup();
 
-    const handleAddGroup = () => {
-        setGroups([...groups, { id: groups.length + 1, name: "kelompok_1" }]);
+    const handleAddGroup = async () => {
+        const name = newGroupName.trim() || `Kelompok ${groups.length + 1}`;
+
+        try {
+            await createGroup.mutateAsync({ name });
+            setNewGroupName('');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Gagal menambah kelompok ronda.');
+        }
     };
 
     return (
@@ -36,20 +33,31 @@ export default function KelompokRondaPage() {
                 </div>
                 
                 <div className="flex flex-col gap-3 rounded-2xl border border-[#00468B]/10 bg-white p-5 shadow-sm">
-                    {groups.map((group, index) => (
-                        <div key={group.id} className="flex flex-col gap-3 rounded-xl bg-[#ebf3f9] p-3 sm:flex-row sm:items-center">
-                            <Select defaultValue={group.name}>
-                                <SelectTrigger className="flex-1 bg-white border-gray-300 focus:ring-[#00468B] h-10">
-                                    <SelectValue placeholder="Pilih Kelompok" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="kelompok_1">Kelompok 1</SelectItem>
-                                    <SelectItem value="kelompok_2">Kelompok 2</SelectItem>
-                                    <SelectItem value="kelompok_3">Kelompok 3</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    {isLoading && (
+                        <div className="rounded-xl bg-[#ebf3f9] p-4 text-sm font-medium text-slate-500">
+                            Memuat kelompok ronda...
+                        </div>
+                    )}
+                    {isError && (
+                        <div className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600">
+                            Gagal memuat kelompok ronda.
+                        </div>
+                    )}
+                    {!isLoading && !isError && groups.length === 0 && (
+                        <div className="rounded-xl bg-[#ebf3f9] p-4 text-sm font-medium text-slate-500">
+                            Belum ada kelompok ronda.
+                        </div>
+                    )}
+                    {groups.map((group) => (
+                        <div key={group.group_id} className="flex flex-col gap-3 rounded-xl bg-[#ebf3f9] p-3 sm:flex-row sm:items-center">
+                            <div className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                                {group.name}
+                                <span className="ml-2 text-xs font-medium text-slate-500">
+                                    {group.members?.length ?? 0} anggota
+                                </span>
+                            </div>
                             
-                            <Button className="bg-[#00468B] hover:bg-[#003366] text-white whitespace-nowrap h-10 px-4 flex items-center shadow-sm">
+                            <Button disabled className="bg-[#00468B] hover:bg-[#003366] text-white whitespace-nowrap h-10 px-4 flex items-center shadow-sm disabled:opacity-60">
                                 <RefreshCw className="w-4 h-4 mr-2" />
                                 Ganti Nama
                             </Button>
@@ -58,16 +66,20 @@ export default function KelompokRondaPage() {
                     
                     {/* Action buttons centered/aligned beneath */}
                     <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:justify-end">
+                        <Input
+                            value={newGroupName}
+                            onChange={(event) => setNewGroupName(event.target.value)}
+                            placeholder={`Kelompok ${groups.length + 1}`}
+                            className="bg-white sm:max-w-xs"
+                        />
                         <Button 
                             variant="outline" 
                             className="text-[#00468B] border-[#00468B] hover:bg-blue-50 h-10 px-4 flex items-center"
                             onClick={handleAddGroup}
+                            disabled={createGroup.isPending}
                         >
                             <ListPlus className="w-4 h-4 mr-2" />
-                            Tambah Kelompok
-                        </Button>
-                        <Button className="bg-[#00468B] hover:bg-[#003366] text-white h-10 px-6 shadow-sm">
-                            Simpan Perubahan
+                            {createGroup.isPending ? 'Menambah...' : 'Tambah Kelompok'}
                         </Button>
                     </div>
                 </div>

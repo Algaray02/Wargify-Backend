@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -30,16 +30,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUsers } from '@/hooks/useUsers';
 
 export default function WargaPerWargaPage() {
-    // Dummy data mimicking the design
-    const dummyData = Array(8).fill({
-        nama: 'Tatang Sutarma',
-        umur: '30',
-        status: 'Anggota Keluarga',
-        telepon: '08123456789',
-        avatarUrl: 'https://ui-avatars.com/api/?name=Tatang+Sutarma&background=ff7b72&color=fff',
-    });
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('semua');
+    const { data: users = [], isLoading, isError } = useUsers();
+
+    const wargaData = useMemo(() => {
+        return users
+            .map((user) => {
+                const isHead = user.family?.head_of_family_id === user.user_id;
+                return {
+                    id: user.user_id,
+                    nama: user.full_name,
+                    username: user.username,
+                    umur: '-',
+                    status: isHead ? 'Kepala Keluarga' : 'Anggota Keluarga',
+                    role: user.role,
+                    telepon: user.phone_number ?? '-',
+                    avatarUrl: user.profile_picture_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name ?? user.username)}&background=00468B&color=fff`,
+                };
+            })
+            .filter((warga) => {
+                const keyword = search.toLowerCase();
+                const matchesSearch = [warga.nama, warga.username, warga.telepon]
+                    .some((value) => String(value).toLowerCase().includes(keyword));
+                const matchesStatus = statusFilter === 'semua'
+                    || (statusFilter === 'kepala_keluarga' && warga.status === 'Kepala Keluarga')
+                    || (statusFilter === 'anggota' && warga.status === 'Anggota Keluarga');
+
+                return matchesSearch && matchesStatus;
+            });
+    }, [users, search, statusFilter]);
 
     return (
         <DashboardLayout>
@@ -58,6 +81,8 @@ export default function WargaPerWargaPage() {
                         <Input 
                             placeholder="Cari Warga" 
                             className="bg-white flex-1"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
                         />
                         <Link href="/warga/per-warga/create">
                             <Button className="bg-[#00468B] hover:bg-[#003366] text-white whitespace-nowrap">
@@ -67,11 +92,12 @@ export default function WargaPerWargaPage() {
                         </Link>
                     </div>
                     
-                    <Select defaultValue="kepala_keluarga">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-[180px] bg-white">
                             <SelectValue placeholder="Filter" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="semua">Semua Warga</SelectItem>
                             <SelectItem value="kepala_keluarga">Kepala Keluarga</SelectItem>
                             <SelectItem value="anggota">Anggota Keluarga</SelectItem>
                         </SelectContent>
@@ -91,8 +117,23 @@ export default function WargaPerWargaPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dummyData.map((warga, index) => (
-                                <TableRow key={index}>
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Memuat data warga...</TableCell>
+                                </TableRow>
+                            )}
+                            {isError && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="py-8 text-center text-red-600">Gagal memuat data warga.</TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && !isError && wargaData.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Tidak ada data warga.</TableCell>
+                                </TableRow>
+                            )}
+                            {wargaData.map((warga) => (
+                                <TableRow key={warga.id}>
                                     <TableCell>
                                         <Avatar className="w-10 h-10 border border-muted">
                                             <AvatarImage src={warga.avatarUrl} alt={warga.nama} />
@@ -108,7 +149,7 @@ export default function WargaPerWargaPage() {
                                     </TableCell>
                                     <TableCell>{warga.telepon}</TableCell>
                                     <TableCell>
-                                        <Link href="/warga/per-warga/edit">
+                                        <Link href={`/warga/per-warga/edit?user_id=${warga.id}`}>
                                             <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
                                                 <SquarePen className="w-4 h-4 mr-2" />
                                                 Kelola
@@ -124,7 +165,7 @@ export default function WargaPerWargaPage() {
                 {/* Pagination */}
                 <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan 1-8 dari 400 baris
+                        Menampilkan {wargaData.length} dari {users.length} baris
                     </div>
                     <Pagination className="mx-0 w-auto">
                         <PaginationContent>

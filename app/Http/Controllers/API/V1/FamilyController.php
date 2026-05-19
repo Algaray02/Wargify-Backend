@@ -10,8 +10,12 @@ class FamilyController extends Controller
 {
     public function index()
     {
-        $families = Family::all();
+        $families = Family::with(['household', 'members'])
+            ->latest()
+            ->get();
+
         return response()->json([
+            'success' => true,
             'message' => 'Family index',
             'data' => $families
         ]);

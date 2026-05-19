@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::all();
+        $users = User::with('family')->latest()->get();
 
         return response()->json([
             'success' => true,
@@ -23,24 +23,23 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $user = User::create($request->all());
-
-        $request->validate([
+        $validated = $request->validate([
             'family_id' => 'required|exists:families,family_id',
             'username' => 'required|unique:users,username',
             'full_name' => 'required|string',
             'password' => 'required|min:6',
-            'role' => 'required|in:KETUA_RT,WARGA',
+            'role' => 'required|in:KETUA_RT,BENDAHARA,WARGA',
+            'phone_number' => 'nullable|string|unique:users,phone_number',
         ]);
 
         $user = User::create([
             'user_id' => (string) Str::uuid(), // Generate UUID manual jika HasUuids belum otomatis
-            'family_id' => $request->family_id,
-            'username' => $request->username,
-            'full_name' => $request->full_name,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'phone_number' => $request->phone_number,
+            'family_id' => $validated['family_id'],
+            'username' => $validated['username'],
+            'full_name' => $validated['full_name'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'phone_number' => $validated['phone_number'] ?? null,
         ]);
 
         return response()->json([
@@ -52,6 +51,8 @@ class UserController extends Controller
 
     public function show(User $user)
     {
+        $user->load('family');
+
         return response()->json([
             'success' => true,
             'message' => 'User detail',
@@ -65,7 +66,9 @@ class UserController extends Controller
             'family_id' => 'exists:families,family_id',
             'username' => 'unique:users,username,' . $user->user_id . ',user_id',
             'full_name' => 'string',
-            'phone_number' => 'nullable|string',
+            'phone_number' => 'nullable|string|unique:users,phone_number,' . $user->user_id . ',user_id',
+            'role' => 'in:KETUA_RT,BENDAHARA,WARGA',
+            'password' => 'nullable|min:6',
         ]);
 
         if ($request->filled('password')) {

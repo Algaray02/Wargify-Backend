@@ -15,13 +15,23 @@ class RondaController extends Controller
     // show schedule ronda
     public function index(): JsonResponse
     {
-        $schedules = RondaSchedule::with(['group.members', 'coordinator'])
+        $schedules = RondaSchedule::with(['group.members', 'coordinator', 'checkpoints', 'attendances'])
             ->whereDate('schedule_date', now()->toDateString())
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => $schedules
+        ]);
+    }
+
+    public function groups(): JsonResponse
+    {
+        $groups = RondaGroup::with('members')->latest()->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $groups
         ]);
     }
 

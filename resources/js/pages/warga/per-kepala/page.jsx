@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -22,15 +22,32 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useFamilies } from '@/hooks/useFamilies';
 
 export default function WargaPerKepalaPage() {
-    // Dummy data mimicking the design
-    const dummyData = Array(7).fill({
-        nama: 'Tatang Sutarma',
-        jumlahAnggota: '30',
-        telepon: '08123456789',
-        avatarUrl: 'https://ui-avatars.com/api/?name=Tatang+Sutarma&background=ff7b72&color=fff',
-    });
+    const [search, setSearch] = useState('');
+    const { data: families = [], isLoading, isError } = useFamilies();
+
+    const kepalaKeluarga = useMemo(() => {
+        return families
+            .map((family) => {
+                const head = family.members?.find((member) => member.user_id === family.head_of_family_id)
+                    ?? family.members?.[0];
+
+                return {
+                    id: family.family_id,
+                    nama: head?.full_name ?? 'Belum ada kepala keluarga',
+                    jumlahAnggota: family.members?.length ?? 0,
+                    telepon: head?.phone_number ?? '-',
+                    avatarUrl: head?.profile_picture_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(head?.full_name ?? 'Keluarga')}&background=00468B&color=fff`,
+                };
+            })
+            .filter((warga) => {
+                const keyword = search.toLowerCase();
+                return [warga.nama, warga.telepon]
+                    .some((value) => String(value).toLowerCase().includes(keyword));
+            });
+    }, [families, search]);
 
     return (
         <DashboardLayout>
@@ -48,6 +65,8 @@ export default function WargaPerKepalaPage() {
                     <Input 
                         placeholder="Cari Warga" 
                         className="max-w-md bg-white"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
                     />
                 </div>
 
@@ -63,8 +82,23 @@ export default function WargaPerKepalaPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dummyData.map((warga, index) => (
-                                <TableRow key={index}>
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Memuat data keluarga...</TableCell>
+                                </TableRow>
+                            )}
+                            {isError && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-red-600">Gagal memuat data keluarga.</TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && !isError && kepalaKeluarga.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Tidak ada data kepala keluarga.</TableCell>
+                                </TableRow>
+                            )}
+                            {kepalaKeluarga.map((warga) => (
+                                <TableRow key={warga.id}>
                                     <TableCell>
                                         <Avatar className="w-10 h-10 border border-muted">
                                             <AvatarImage src={warga.avatarUrl} alt={warga.nama} />
@@ -91,7 +125,7 @@ export default function WargaPerKepalaPage() {
                 {/* Pagination */}
                 <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan 1-7 dari 400 baris
+                        Menampilkan {kepalaKeluarga.length} dari {families.length} baris
                     </div>
                     <Pagination className="mx-0 w-auto">
                         <PaginationContent>

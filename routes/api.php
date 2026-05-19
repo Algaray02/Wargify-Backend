@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
         // Ronda Route
         Route::get('/ronda/schedules', [RondaController::class, 'index']);
         Route::post('/ronda/attendance', [RondaController::class, 'attendance']);
+        Route::get('/ronda/groups', [RondaController::class, 'groups']);
         Route::post('/ronda/groups', [RondaController::class, 'storeGroup']);
     });
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -29,26 +29,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRondaSchedules } from '@/hooks/useRonda';
 
 export default function RiwayatRondaPage() {
-    const dummyData = [
-        ...Array(6).fill({
-            tanggal: '29/04/2026',
-            kehadiran: '6/6',
-            checkpoint: '6/6',
-            kelompok: 'Kelompok 1',
-            waktu: '23:59-03:00',
-            status: 'Selesai'
-        }),
-        ...Array(4).fill({
-            tanggal: '29/04/2026',
-            kehadiran: '0/6',
-            checkpoint: '0/6',
-            kelompok: 'Kelompok 2',
-            waktu: '23:59-03:00',
-            status: 'Terlewat'
-        }),
-    ];
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('semua_status');
+    const { data: schedules = [], isLoading, isError } = useRondaSchedules();
+
+    const formatDate = (value) => value
+        ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+        : '-';
+
+    const formatTime = (value) => value
+        ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+        : '-';
+
+    const statusLabels = {
+        COMPLETED: 'Selesai',
+        MISSED: 'Terlewat',
+        ONGOING: 'Berlangsung',
+        SCHEDULED: 'Mendatang',
+    };
+
+    const riwayatData = useMemo(() => {
+        return schedules
+            .map((schedule) => {
+                const memberCount = schedule.group?.members?.length ?? 0;
+                const completed = schedule.status === 'COMPLETED';
+
+                return {
+                    id: schedule.schedule_id,
+                    tanggal: formatDate(schedule.schedule_date),
+                    kehadiran: completed ? `${memberCount}/${memberCount}` : `0/${memberCount}`,
+                    checkpoint: schedule.checkpoints?.length ? `${schedule.checkpoints.length}/${schedule.checkpoints.length}` : '-',
+                    kelompok: schedule.group?.name ?? '-',
+                    waktu: `${formatTime(schedule.shift_start)}-${formatTime(schedule.shift_end)}`,
+                    status: statusLabels[schedule.status] ?? schedule.status,
+                };
+            })
+            .filter((riwayat) => {
+                const keyword = search.toLowerCase();
+                const matchesSearch = [riwayat.tanggal, riwayat.kelompok, riwayat.status]
+                    .some((value) => String(value).toLowerCase().includes(keyword));
+                const matchesStatus = statusFilter === 'semua_status'
+                    || riwayat.status.toLowerCase() === statusFilter;
+
+                return matchesSearch && matchesStatus;
+            });
+    }, [schedules, search, statusFilter]);
 
     return (
         <DashboardLayout>
@@ -66,8 +94,10 @@ export default function RiwayatRondaPage() {
                     <Input 
                         placeholder="Cari pelaksanaan..." 
                         className="bg-white flex-1"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
                     />
-                    <Select defaultValue="semua_status">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-[160px] bg-white">
                             <SelectValue placeholder="Semua Status" />
                         </SelectTrigger>
@@ -93,8 +123,23 @@ export default function RiwayatRondaPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dummyData.map((riwayat, index) => (
-                                <TableRow key={index}>
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Memuat riwayat ronda...</TableCell>
+                                </TableRow>
+                            )}
+                            {isError && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="py-8 text-center text-red-600">Gagal memuat riwayat ronda.</TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && !isError && riwayatData.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Tidak ada riwayat ronda.</TableCell>
+                                </TableRow>
+                            )}
+                            {riwayatData.map((riwayat) => (
+                                <TableRow key={riwayat.id}>
                                     <TableCell className="font-medium">{riwayat.tanggal}</TableCell>
                                     <TableCell>{riwayat.kehadiran}</TableCell>
                                     <TableCell>{riwayat.checkpoint}</TableCell>
@@ -122,7 +167,7 @@ export default function RiwayatRondaPage() {
                 {/* Pagination */}
                 <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan 1-10 dari 400 baris
+                        Menampilkan {riwayatData.length} dari {schedules.length} baris
                     </div>
                     <Pagination className="mx-0 w-auto">
                         <PaginationContent>

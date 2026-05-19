@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -48,7 +48,17 @@ class AuthController extends Controller
                     ],
                     'token' => $token,
                 ],
-            ]);
+            ])->cookie(
+                'wargify_token',
+                $token,
+                60 * 24 * 7,
+                null,
+                null,
+                $request->isSecure(),
+                true,
+                false,
+                'lax'
+            );
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -70,17 +80,19 @@ class AuthController extends Controller
             // Hapus token saat ini
             if ($request->user()) {
                 $request->user()->currentAccessToken()->delete();
+            } elseif ($request->cookie('wargify_token')) {
+                PersonalAccessToken::findToken($request->cookie('wargify_token'))?->delete();
             }
             
             return response()->json([
                 'success' => true,
                 'message' => 'Logged out'
-            ]);
+            ])->withoutCookie('wargify_token');
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal logout'
-            ], 500);
+            ], 500)->withoutCookie('wargify_token');
         }
     }
 }

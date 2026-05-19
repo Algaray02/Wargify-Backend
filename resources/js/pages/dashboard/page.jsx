@@ -17,11 +17,20 @@ import {
     Target,
     UsersRound,
 } from 'lucide-react';
+import { useFamilies } from '@/hooks/useFamilies';
+import { useRondaSchedules } from '@/hooks/useRonda';
+import { useUsers } from '@/hooks/useUsers';
 
 export default function DashboardPage() {
+    const { data: users = [] } = useUsers();
+    const { data: families = [] } = useFamilies();
+    const { data: schedules = [] } = useRondaSchedules();
+    const activeRonda = schedules.filter((schedule) => schedule.status === 'ONGOING').length;
+    const scheduledRonda = schedules.filter((schedule) => schedule.status === 'SCHEDULED').length;
+
     const stats = [
-        { label: 'Total Keluarga', value: '50', change: '+8%', icon: Home, tone: 'bg-[#00468B]' },
-        { label: 'Total Warga', value: '400', change: '+24 warga', icon: UsersRound, tone: 'bg-[#2A6B2C]' },
+        { label: 'Total Keluarga', value: String(families.length), change: 'live data', icon: Home, tone: 'bg-[#00468B]' },
+        { label: 'Total Warga', value: String(users.length), change: 'live data', icon: UsersRound, tone: 'bg-[#2A6B2C]' },
         { label: 'Total Iuran', value: 'Rp12 Jt', change: '92% target', icon: BadgeDollarSign, tone: 'bg-[#00468B]' },
         { label: 'Fasilitas Dilaporkan', value: '2', change: '1 prioritas', icon: Building2, tone: 'bg-[#AD1114]' },
     ];
@@ -29,7 +38,7 @@ export default function DashboardPage() {
     const operations = [
         { label: 'Target iuran bulan ini', value: 'Rp13.000.000', progress: 92, icon: Target },
         { label: 'Pertemuan terjadwal', value: '4 agenda', progress: 64, icon: CalendarDays },
-        { label: 'Petugas ronda aktif', value: '4 orang', progress: 80, icon: MoonStar },
+        { label: 'Jadwal ronda aktif', value: `${activeRonda} aktif, ${scheduledRonda} mendatang`, progress: schedules.length ? Math.round((activeRonda / schedules.length) * 100) : 0, icon: MoonStar },
     ];
 
     const activities = [
@@ -46,10 +55,6 @@ export default function DashboardPage() {
                 <section className="overflow-hidden rounded-[2rem] border border-[#00468B]/10 bg-[#00468B] text-white shadow-2xl shadow-slate-900/12">
                     <div className="relative grid gap-8 p-6 md:grid-cols-[1.2fr_.8fr] md:p-8">
                         <div className="relative space-y-5">
-                            <Badge className="w-fit border-white/20 bg-white/12 text-cyan-50 hover:bg-white/12">
-                                <RadioTower className="mr-1.5 size-3.5" />
-                                Operasional warga hari ini
-                            </Badge>
                             <div className="max-w-2xl space-y-3">
                                 <h1 className="text-3xl font-black tracking-tight md:text-5xl !text-white">
                                     Semua layanan lingkungan dalam satu kendali.
@@ -59,7 +64,7 @@ export default function DashboardPage() {
                                 </p>
                             </div>
                         </div>
-                        <div className="relative rounded-3xl border border-white/18 bg-white/10 p-5 shadow-inner">
+                        {/* <div className="relative rounded-3xl border border-white/18 bg-white/10 p-5 shadow-inner">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-semibold text-cyan-50/70">Kesehatan operasional</p>
@@ -76,7 +81,7 @@ export default function DashboardPage() {
                                 <span>Stabil</span>
                                 <span>3 perlu perhatian</span>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </section>
 

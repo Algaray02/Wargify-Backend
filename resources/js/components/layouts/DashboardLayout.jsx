@@ -39,13 +39,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { authService } from '@/services/authService';
 
 export default function DashboardLayout({ children }) {
     const { url } = usePage();
 
-    const handleLogout = () => {
-        localStorage.removeItem('auth_token');
-        router.visit('/login');
+    const handleLogout = async () => {
+        try {
+            await authService.logout();
+        } finally {
+            localStorage.removeItem('auth_token');
+            router.visit('/login');
+        }
     };
 
     const navItems = [
