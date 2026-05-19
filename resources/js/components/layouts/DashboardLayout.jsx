@@ -190,21 +190,11 @@ export default function DashboardLayout({ children }) {
                 </SidebarContent>
 
                 <SidebarFooter className="relative p-4 border-t border-white/10">
-                    <div className="mb-3 rounded-2xl border border-white/12 bg-white/10 p-3 shadow-inner">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-cyan-50/70">
-                            <RadioTower className="size-4 text-[#E6F6FF]" />
-                            Status layanan
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-sm font-bold">
-                            <span>Online</span>
-                            <span className="rounded-full bg-[#ACF4A4] px-2 py-0.5 text-xs text-[#2A6B2C] ring-1 ring-white/25">Stabil</span>
-                        </div>
-                    </div>
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton 
                                 onClick={handleLogout}
-                                className="h-11 px-3 text-cyan-50/86 hover:!bg-white/10 hover:text-white transition-colors rounded-xl"
+                                className="h-11 px-3 text-cyan-50/86 hover:!bg-red-500/30 hover:text-white transition-colors rounded-xl cursor-pointer  "
                                 render={
                                     <button className="flex items-center space-x-2">
                                         <LogOut size={20} />
