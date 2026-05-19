@@ -4,7 +4,7 @@ use App\Http\Controllers\API\V1\AuthController;
 use App\Http\Controllers\API\V1\FamilyController;
 use App\Http\Controllers\API\V1\RondaController;
 use App\Http\Controllers\API\V1\UserController;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 */
+
+Route::get('/documentation/openapi.json', function () {
+    return response()->file(public_path('docs/openapi.json'), [
+        'Content-Type' => 'application/json',
+    ]);
+})->name('api.documentation.openapi');
 
 // Public Routes (Bisa diakses tanpa login)
 Route::prefix('v1')->group(function () {
