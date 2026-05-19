@@ -234,7 +234,9 @@ export default function DashboardLayout({ children }) {
                 </header>
 
                 <main className="relative flex-1 w-full min-h-[calc(100vh-5rem)]">
-                    {children}
+                    <div className="mx-auto w-full max-w-7xl">
+                        {children}
+                    </div>
                 </main>
             </SidebarInset>
         </SidebarProvider>

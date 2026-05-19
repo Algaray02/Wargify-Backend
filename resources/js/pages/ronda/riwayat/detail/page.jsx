@@ -55,15 +55,15 @@ export default function DetailPelaksanaanRondaPage() {
                 </div>
 
                 {/* Details Table */}
-                <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm mb-10 max-w-3xl">
-                    <table className="w-full border-collapse">
+                <div className="mb-10 max-w-3xl overflow-hidden rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm ring-1 ring-white/70">
+                    <table className="w-full border-separate border-spacing-y-2">
                         <tbody>
                             {details.map((detail, index) => (
-                                <tr key={index} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/30 transition-colors">
-                                    <td className="w-[220px] bg-[#00468B] text-white font-semibold text-sm px-6 py-4 border-r border-blue-400/30">
+                                <tr key={index} className="group transition-all duration-200">
+                                    <td className="w-[220px] rounded-l-xl bg-[#00468B] px-6 py-4 text-sm font-black text-white shadow-sm">
                                         {detail.label}
                                     </td>
-                                    <td className="px-6 py-4 text-gray-900 text-sm font-medium flex justify-between items-center">
+                                    <td className="flex items-center justify-between rounded-r-xl bg-[#F8FCFF] px-6 py-4 text-sm font-semibold text-slate-900 shadow-[0_1px_0_rgba(15,23,42,0.06),0_-1px_0_rgba(15,23,42,0.03)] transition-colors group-hover:bg-[#E6F6FF]">
                                         <span>{detail.value}</span>
                                         {detail.hasAction && (
                                             <Dialog>

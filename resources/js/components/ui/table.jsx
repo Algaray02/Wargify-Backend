@@ -9,10 +9,13 @@ function Table({
   ...props
 }) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm ring-1 ring-white/70"
+    >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-full min-w-max border-separate border-spacing-y-2 caption-bottom text-sm", className)}
         {...props} />
     </div>
   );
@@ -25,7 +28,10 @@ function TableHeader({
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={cn(
+        "[&_tr]:border-0 [&_th]:!bg-[#F4FAFF] [&_th]:!text-[#00468B] [&_th:first-child]:rounded-l-xl [&_th:last-child]:rounded-r-xl",
+        className
+      )}
       {...props} />
   );
 }
@@ -49,7 +55,7 @@ function TableFooter({
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
+      className={cn("font-semibold [&>tr]:last:border-b-0", className)}
       {...props} />
   );
 }
@@ -62,7 +68,7 @@ function TableRow({
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "group/row border-0 transition-all duration-200 has-aria-expanded:bg-[#E6F6FF] data-[state=selected]:bg-[#E6F6FF] [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl",
         className
       )}
       {...props} />
@@ -77,7 +83,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-12 bg-[#F4FAFF] px-5 text-left align-middle text-xs font-black uppercase tracking-normal text-[#00468B] whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props} />
@@ -92,7 +98,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "bg-white px-5 py-4 align-middle font-medium text-slate-700 whitespace-nowrap shadow-[0_1px_0_rgba(15,23,42,0.06),0_-1px_0_rgba(15,23,42,0.03)] transition-colors group-hover/row:bg-[#F8FCFF] [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props} />
