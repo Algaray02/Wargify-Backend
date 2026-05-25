@@ -142,6 +142,25 @@ return new class extends Migration {
             $table->timestamps();
         });
 
+        Schema::create('activity_galleries', function (Blueprint $table) {
+            $table->uuid('photo_id')->primary();
+            $table->foreignUuid('activity_id')->constrained('activities', 'activity_id');
+            $table->foreignUuid('uploaded_by')->constrained('users', 'user_id');
+            $table->string('photo_url');
+            $table->string('caption')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('announcements', function (Blueprint $table) {
+            $table->uuid('announcement_id')->primary();
+            $table->foreignUuid('author_id')->constrained('users', 'user_id');
+            $table->string('title');
+            $table->text('content');
+            $table->string('image_url')->nullable();
+            $table->boolean('is_important')->default(false);
+            $table->timestamps();
+        });
+
         // E. SOS & LAPORAN
         Schema::create('emergency_alerts', function (Blueprint $table) {
             $table->uuid('alert_id')->primary();
@@ -172,6 +191,8 @@ return new class extends Migration {
         // Drop dengan urutan terbalik untuk menghindari error relasi
         Schema::dropIfExists('facility_reports');
         Schema::dropIfExists('emergency_alerts');
+        Schema::dropIfExists('announcements');
+        Schema::dropIfExists('activity_galleries');
         Schema::dropIfExists('activity_participants');
         Schema::dropIfExists('activities');
         Schema::dropIfExists('ronda_attendances');
