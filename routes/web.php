@@ -62,3 +62,5 @@ Route::middleware(EnsureSanctumPageAuthenticated::class)->group(function () {
     // SoS Log
     Route::inertia('/sos-log', 'sos-log/page');
 });
+
+Route::view('/api/documentation', 'api-docs')->name('api.documentation');
