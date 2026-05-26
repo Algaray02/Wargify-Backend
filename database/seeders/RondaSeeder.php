@@ -7,6 +7,7 @@ use App\Models\Checkpoint;
 use App\Models\RondaGroup;
 use App\Models\RondaSchedule;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -14,6 +15,13 @@ class RondaSeeder extends Seeder
 {
     public function run(): void
     {
+        DB::statement('TRUNCATE TABLE ronda_attendances CASCADE');
+        DB::statement('TRUNCATE TABLE schedule_checkpoints CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_schedules CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_group_members CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_groups CASCADE');
+        DB::statement('TRUNCATE TABLE checkpoints CASCADE');
+
         // 1. Buat Checkpoint (Titik Pantau)
         $posUtama = Checkpoint::create([
             'name' => 'Pos Ronda Utama',

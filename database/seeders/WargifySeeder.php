@@ -14,6 +14,8 @@ class WargifySeeder extends Seeder
         // 0. CLEAR DATA LAMA (Kecuali Ronda, karena akan diurus RondaSeeder)
         DB::statement('TRUNCATE TABLE emergency_alerts CASCADE');
         DB::statement('TRUNCATE TABLE facility_reports CASCADE');
+        DB::statement('TRUNCATE TABLE announcements CASCADE');
+        DB::statement('TRUNCATE TABLE activity_galleries CASCADE');
         DB::statement('TRUNCATE TABLE activity_participants CASCADE');
         DB::statement('TRUNCATE TABLE activities CASCADE');
         DB::statement('TRUNCATE TABLE treasury_logs CASCADE');
@@ -118,9 +120,9 @@ class WargifySeeder extends Seeder
         // 3. DATA WARGA
         $wargaIds = [];
         $wargaData = [
-            ['nama' => 'Rizky Warga', 'telepon' => '08111111111', 'blok' => 'A', 'nomor' => '3'],
-            ['nama' => 'Siti Nurhaliza', 'telepon' => '08112222222', 'blok' => 'A', 'nomor' => '4'],
-            ['nama' => 'Rahmat Hidayat', 'telepon' => '08113333333', 'blok' => 'B', 'nomor' => '1'],
+            ['nama' => 'Rizky Warga', 'username' => 'rizky_warga', 'telepon' => '08111111111', 'blok' => 'A', 'nomor' => '3'],
+            ['nama' => 'Siti Nurhaliza', 'username' => 'siti', 'telepon' => '08112222222', 'blok' => 'A', 'nomor' => '4'],
+            ['nama' => 'Rahmat Hidayat', 'username' => 'rahmat', 'telepon' => '08113333333', 'blok' => 'B', 'nomor' => '1'],
         ];
 
         foreach ($wargaData as $warga) {
@@ -136,7 +138,7 @@ class WargifySeeder extends Seeder
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             DB::table('users')->insert([
-                'user_id' => $uId, 'family_id' => $fId, 'username' => strtolower(explode(' ', $warga['nama'])[0]),
+                'user_id' => $uId, 'family_id' => $fId, 'username' => $warga['username'],
                 'password' => Hash::make('password123'), 'full_name' => $warga['nama'],
                 'phone_number' => $warga['telepon'], 'role' => 'WARGA',
                 'created_at' => now(), 'updated_at' => now(),
@@ -162,12 +164,155 @@ class WargifySeeder extends Seeder
             ]);
         }
 
-        // 5. EMERGENCY ALERTS
+        // 5. CATATAN KAS
+        DB::table('treasury_logs')->insert([
+            [
+                'log_id' => Str::uuid(),
+                'type' => 'INCOME',
+                'source' => 'IURAN_WARGA',
+                'amount' => 150000,
+                'description' => 'Rekap pembayaran iuran warga bulan Mei 2026',
+                'receipt_url' => null,
+                'recorded_by' => $bendaharaId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'log_id' => Str::uuid(),
+                'type' => 'EXPENSE',
+                'source' => 'PENGELUARAN_RUTIN',
+                'amount' => 35000,
+                'description' => 'Pembelian lampu pos ronda',
+                'receipt_url' => '/storage/receipts/lampu-pos-ronda.jpg',
+                'recorded_by' => $bendaharaId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        // 6. KEGIATAN, GALERI, DAN PENGUMUMAN
+        $rapatId = Str::uuid();
+        $kerjaBaktiId = Str::uuid();
+
+        DB::table('activities')->insert([
+            [
+                'activity_id' => $rapatId,
+                'type' => 'RAPAT',
+                'title' => 'Rapat Anggaran RT Mei 2026',
+                'description' => 'Pembahasan alokasi kas RT untuk perawatan fasilitas umum.',
+                'activity_date' => now()->addDays(3),
+                'location_name' => 'Balai RT',
+                'attendance_qr_code' => 'QR-ACT-RAPAT-MEI-2026',
+                'status' => 'ANNOUNCED',
+                'created_by' => $ketuaRTId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'activity_id' => $kerjaBaktiId,
+                'type' => 'KEGIATAN_UMUM',
+                'title' => 'Kerja Bakti Minggu Pagi',
+                'description' => 'Membersihkan selokan dan area taman warga.',
+                'activity_date' => now()->subDays(7),
+                'location_name' => 'Taman Blok A',
+                'attendance_qr_code' => null,
+                'status' => 'COMPLETED',
+                'created_by' => $ketuaRTId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        foreach ($wargaIds as $index => $wId) {
+            DB::table('activity_participants')->insert([
+                'participant_id' => Str::uuid(),
+                'activity_id' => $rapatId,
+                'user_id' => $wId,
+                'attended_at' => $index < 2 ? now()->addDays(3)->setTime(19, 5 + $index) : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('activity_galleries')->insert([
+            [
+                'photo_id' => Str::uuid(),
+                'activity_id' => $kerjaBaktiId,
+                'uploaded_by' => $ketuaRTId,
+                'photo_url' => '/storage/activity-galleries/kerja-bakti-1.jpg',
+                'caption' => 'Warga membersihkan area taman Blok A',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'photo_id' => Str::uuid(),
+                'activity_id' => $kerjaBaktiId,
+                'uploaded_by' => $ketuaRTId,
+                'photo_url' => '/storage/activity-galleries/kerja-bakti-2.jpg',
+                'caption' => 'Koordinasi pembagian tugas kerja bakti',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('announcements')->insert([
+            [
+                'announcement_id' => Str::uuid(),
+                'author_id' => $ketuaRTId,
+                'title' => 'Jadwal Rapat Warga Bulan Mei',
+                'content' => 'Seluruh warga diundang menghadiri rapat bulanan di Balai RT pada pukul 19.00 WIB.',
+                'image_url' => '/storage/announcements/rapat-mei.jpg',
+                'is_important' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'announcement_id' => Str::uuid(),
+                'author_id' => $bendaharaId,
+                'title' => 'Pembayaran Iuran Mei Dibuka',
+                'content' => 'Pembayaran iuran warga bulan Mei dapat dilakukan melalui QR bendahara atau saat jadwal piket.',
+                'image_url' => null,
+                'is_important' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        // 7. EMERGENCY ALERTS & LAPORAN FASILITAS
         DB::table('emergency_alerts')->insert([
             'alert_id' => Str::uuid(), 'sender_id' => $wargaIds[0],
             'latitude' => -7.0483, 'longitude' => 110.4381,
             'message' => 'Ada orang mencurigakan di area blok A',
             'status' => 'ACTIVE', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        DB::table('facility_reports')->insert([
+            [
+                'report_id' => Str::uuid(),
+                'reporter_id' => $wargaIds[1],
+                'title' => 'Lampu Jalan Mati',
+                'category' => 'Penerangan',
+                'description' => 'Lampu jalan depan rumah A-4 mati sejak dua hari lalu.',
+                'image_url' => '/storage/facility-reports/lampu-mati.jpg',
+                'status' => 'IN_PROGRESS',
+                'response_message' => 'Pengurus sudah menghubungi teknisi untuk pengecekan.',
+                'resolved_photo_url' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'report_id' => Str::uuid(),
+                'reporter_id' => $wargaIds[2],
+                'title' => 'Selokan Tersumbat',
+                'category' => 'Kebersihan',
+                'description' => 'Selokan di Blok B-1 tersumbat sampah daun.',
+                'image_url' => '/storage/facility-reports/selokan.jpg',
+                'status' => 'SUBMITTED',
+                'response_message' => null,
+                'resolved_photo_url' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }
