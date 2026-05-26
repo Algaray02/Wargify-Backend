@@ -13,8 +13,21 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        // Jika user belum login atau role-nya tidak ada di dalam daftar yang diizinkan
-        if (!$request->user() || !in_array($request->user()->role, $roles)) {
+        $roles = array_values(array_filter($roles, fn ($role) => filled($role)));
+
+        if (!$request->user()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda belum login.'
+            ], 401);
+        }
+
+        if (empty($roles)) {
+            return $next($request);
+        }
+
+        // Jika role user tidak ada di dalam daftar yang diizinkan
+        if (!in_array($request->user()->role, $roles, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses ditolak. Peran Anda tidak memiliki izin untuk mengakses modul ini.'

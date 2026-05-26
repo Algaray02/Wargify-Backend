@@ -88,6 +88,7 @@ Route::prefix('v1')->group(function () {
         // 6. MODUL RONDA
         // =====================================================
         Route::middleware('role:')->group(function () {
+            Route::get('/ronda/groups', [RondaController::class, 'groups']);
             Route::post('/ronda/groups', [RondaController::class, 'storeGroup']);
             Route::post('/ronda/groups/{id}/members', [RondaController::class, 'addGroupMember']);
             Route::post('/ronda/schedules', [RondaController::class, 'storeSchedule']);

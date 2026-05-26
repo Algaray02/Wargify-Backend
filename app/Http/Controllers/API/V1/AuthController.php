@@ -95,4 +95,55 @@ class AuthController extends Controller
             ], 500)->withoutCookie('wargify_token');
         }
     }
+
+    public function me(Request $request)
+    {
+        $user = $request->user()?->load('family.household');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User aktif',
+            'data' => $user,
+        ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'full_name' => 'sometimes|required|string|max:255',
+            'phone_number' => 'sometimes|required|string|max:30|unique:users,phone_number,' . $user->user_id . ',user_id',
+            'profile_picture_url' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        if ($request->filled('password')) {
+            $validated['password'] = Hash::make($request->password);
+        } else {
+            unset($validated['password']);
+        }
+
+        $user->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui',
+            'data' => $user->fresh()->load('family.household'),
+        ]);
+    }
+
+    public function updateFcmToken(Request $request)
+    {
+        $validated = $request->validate([
+            'fcm_token' => 'required|string',
+        ]);
+
+        $request->user()->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'FCM token berhasil diperbarui',
+        ]);
+    }
 }

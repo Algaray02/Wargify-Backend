@@ -26,6 +26,11 @@ class Family extends Model
         return $this->hasMany(User::class, 'family_id', 'family_id');
     }
 
+    public function headOfFamily()
+    {
+        return $this->belongsTo(User::class, 'head_of_family_id', 'user_id');
+    }
+
     // Relasi: Satu Keluarga tinggal di satu Rumah (Household)
     public function household()
     {

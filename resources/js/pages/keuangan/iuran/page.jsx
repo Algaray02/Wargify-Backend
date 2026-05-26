@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -21,14 +21,33 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { useFamilies } from '@/hooks/useFamilies';
+import { useIuranPeriods } from '@/hooks/useIuran';
 
 export default function DataIuranPage() {
-    const dummyData = Array(8).fill({
-        namaIuran: 'Iuran Bulanan',
-        tenggat: '29/04/2026',
-        jumlahUntukDibayar: 'Iuran Warga',
-        sudahBayar: '160/200',
-    });
+    const [search, setSearch] = useState('');
+    const { data: periods = [], isLoading, isError } = useIuranPeriods();
+    const { data: families = [] } = useFamilies();
+
+    const formatCurrency = (value) => new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+    }).format(value ?? 0);
+
+    const formatPeriod = (period) => {
+        if (!period.month || !period.year) return '-';
+        return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' })
+            .format(new Date(Number(period.year), Number(period.month) - 1, 1));
+    };
+
+    const filteredPeriods = useMemo(() => {
+        const keyword = search.toLowerCase();
+        return periods.filter((period) => (
+            [period.period_name, formatPeriod(period)]
+                .some((value) => String(value).toLowerCase().includes(keyword))
+        ));
+    }, [periods, search]);
 
     return (
         <DashboardLayout>
@@ -46,6 +65,8 @@ export default function DataIuranPage() {
                     <Input 
                         placeholder="Cari Iuran" 
                         className="max-w-md bg-white flex-1"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
                     />
                     
                     <Link href="/keuangan/iuran/create">
@@ -68,12 +89,27 @@ export default function DataIuranPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dummyData.map((iuran, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{iuran.namaIuran}</TableCell>
-                                    <TableCell>{iuran.tenggat}</TableCell>
-                                    <TableCell>{iuran.jumlahUntukDibayar}</TableCell>
-                                    <TableCell>{iuran.sudahBayar}</TableCell>
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Memuat data iuran...</TableCell>
+                                </TableRow>
+                            )}
+                            {isError && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-red-600">Gagal memuat data iuran.</TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && !isError && filteredPeriods.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Tidak ada data iuran.</TableCell>
+                                </TableRow>
+                            )}
+                            {filteredPeriods.map((iuran) => (
+                                <TableRow key={iuran.period_id}>
+                                    <TableCell className="font-medium">{iuran.period_name}</TableCell>
+                                    <TableCell>{formatPeriod(iuran)}</TableCell>
+                                    <TableCell>{formatCurrency(iuran.amount_per_family)}</TableCell>
+                                    <TableCell>{iuran.paid_payments_count ?? 0}/{families.length}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Button variant="outline" size="sm" className="text-[#00468B] border-[#00468B] hover:bg-blue-50">
@@ -97,7 +133,7 @@ export default function DataIuranPage() {
                 {/* Pagination */}
                 <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan 1-8 dari 400 baris
+                        Menampilkan {filteredPeriods.length} dari {periods.length} baris
                     </div>
                     <Pagination className="mx-0 w-auto">
                         <PaginationContent>

@@ -18,25 +18,34 @@ import {
     UsersRound,
 } from 'lucide-react';
 import { useFamilies } from '@/hooks/useFamilies';
+import { useHouseholds } from '@/hooks/useHouseholds';
 import { useRondaSchedules } from '@/hooks/useRonda';
+import { useTreasurySummary } from '@/hooks/useTreasury';
 import { useUsers } from '@/hooks/useUsers';
 
 export default function DashboardPage() {
     const { data: users = [] } = useUsers();
     const { data: families = [] } = useFamilies();
+    const { data: households = [] } = useHouseholds();
     const { data: schedules = [] } = useRondaSchedules();
+    const { data: treasurySummary } = useTreasurySummary();
     const activeRonda = schedules.filter((schedule) => schedule.status === 'ONGOING').length;
     const scheduledRonda = schedules.filter((schedule) => schedule.status === 'SCHEDULED').length;
+    const formatCurrency = (value) => new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+    }).format(value ?? 0);
 
     const stats = [
         { label: 'Total Keluarga', value: String(families.length), change: 'live data', icon: Home, tone: 'bg-[#00468B]' },
         { label: 'Total Warga', value: String(users.length), change: 'live data', icon: UsersRound, tone: 'bg-[#2A6B2C]' },
-        { label: 'Total Iuran', value: 'Rp12 Jt', change: '92% target', icon: BadgeDollarSign, tone: 'bg-[#00468B]' },
-        { label: 'Fasilitas Dilaporkan', value: '2', change: '1 prioritas', icon: Building2, tone: 'bg-[#AD1114]' },
+        { label: 'Saldo Kas', value: formatCurrency(treasurySummary?.current_balance), change: 'live data', icon: BadgeDollarSign, tone: 'bg-[#00468B]' },
+        { label: 'Total Rumah', value: String(households.length), change: 'live data', icon: Building2, tone: 'bg-[#AD1114]' },
     ];
 
     const operations = [
-        { label: 'Target iuran bulan ini', value: 'Rp13.000.000', progress: 92, icon: Target },
+        { label: 'Total pemasukan kas', value: formatCurrency(treasurySummary?.total_income), progress: 100, icon: Target },
         { label: 'Pertemuan terjadwal', value: '4 agenda', progress: 64, icon: CalendarDays },
         { label: 'Jadwal ronda aktif', value: `${activeRonda} aktif, ${scheduledRonda} mendatang`, progress: schedules.length ? Math.round((activeRonda / schedules.length) * 100) : 0, icon: MoonStar },
     ];

@@ -18,7 +18,12 @@ class IuranController extends Controller
      */
     public function indexPeriod(): JsonResponse
     {
-        $periods = IuranPeriod::latest()->get();
+        $periods = IuranPeriod::withCount([
+                'payments',
+                'payments as paid_payments_count' => fn ($query) => $query->where('amount_paid', '>', 0),
+            ])
+            ->latest()
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -43,25 +48,11 @@ class IuranController extends Controller
         // Generate QR Code Statis untuk pembayaran bulan ini
         $validated['payment_qr_code'] = 'QR-PAY-' . Str::upper(Str::slug($validated['period_name']));
 
-        // 1. Simpan Periode Baru
         $period = IuranPeriod::create($validated);
-
-        // 2. LOGIKA UTAMA: Ambil semua keluarga aktif untuk digenerate tagihannya
-        $families = Family::all();
-
-        foreach ($families as $family) {
-            IuranPayment::create([
-                'period_id'   => $period->period_id,
-                'family_id'   => $family->family_id,
-                'amount_paid' => 0,
-                'status'      => 'BELUM_BAYAR',
-                'paid_at'     => null,
-            ]);
-        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Periode iuran berhasil dibuat dan tagihan seluruh keluarga telah di-generate.',
+            'message' => 'Periode iuran berhasil dibuat.',
             'data'    => $period
         ], 201);
     }
@@ -90,24 +81,65 @@ class IuranController extends Controller
     public function storePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'payment_id'      => 'required|exists:iuran_payments,payment_id',
+            'payment_id'      => 'nullable|exists:iuran_payments,payment_id',
+            'period_id'       => 'required_without:payment_id|exists:iuran_periods,period_id',
+            'family_id'       => 'required_without:payment_id|exists:families,family_id',
             'paid_by_user_id' => 'required|exists:users,user_id',
             'amount_paid'     => 'required|numeric|min:0',
         ]);
 
-        $payment = IuranPayment::findOrFail($validated['payment_id']);
-        
-        $payment->update([
+        $payment = isset($validated['payment_id'])
+            ? IuranPayment::findOrFail($validated['payment_id'])
+            : IuranPayment::firstOrNew([
+                'period_id' => $validated['period_id'],
+                'family_id' => $validated['family_id'],
+            ]);
+
+        $payment->fill([
+            'period_id'        => $payment->period_id ?? $validated['period_id'],
+            'family_id'        => $payment->family_id ?? $validated['family_id'],
             'paid_by_user_id' => $validated['paid_by_user_id'],
             'amount_paid'     => $validated['amount_paid'],
-            'status'          => 'LUNAS',
             'paid_at'         => now(),
-        ]);
+        ])->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Catatan pembayaran berhasil diperbarui, status: LUNAS.',
-            'data'    => $payment
+            'message' => 'Catatan pembayaran berhasil diperbarui.',
+            'data'    => $payment->load(['period', 'family.headOfFamily', 'payer'])
+        ]);
+    }
+
+    public function updatePayment(Request $request, $id): JsonResponse
+    {
+        $payment = IuranPayment::findOrFail($id);
+
+        $validated = $request->validate([
+            'paid_by_user_id' => 'sometimes|required|exists:users,user_id',
+            'amount_paid'     => 'sometimes|required|numeric|min:0',
+        ]);
+
+        if (array_key_exists('amount_paid', $validated) && (float) $validated['amount_paid'] > 0) {
+            $validated['paid_at'] = $payment->paid_at ?? now();
+        }
+
+        $payment->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catatan pembayaran berhasil diperbarui.',
+            'data'    => $payment->fresh(['period', 'family.headOfFamily', 'payer'])
+        ]);
+    }
+
+    public function destroyPayment($id): JsonResponse
+    {
+        $payment = IuranPayment::findOrFail($id);
+        $payment->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catatan pembayaran berhasil dihapus.'
         ]);
     }
 
