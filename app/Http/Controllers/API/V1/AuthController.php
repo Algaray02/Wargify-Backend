@@ -51,7 +51,7 @@ class AuthController extends Controller
             ])->cookie(
                 'wargify_token',
                 $token,
-                60 * 24 * 7,
+                0,
                 null,
                 null,
                 $request->isSecure(),

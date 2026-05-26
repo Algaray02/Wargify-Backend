@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Middleware\EnsureSanctumPageAuthenticated;
+use App\Http\Middleware\RedirectIfSanctumPageAuthenticated;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::view('/api/documentation', 'api-docs')->name('api.documentation');
 
-Route::inertia('/login', 'auth/login/page')->name('login');
+Route::inertia('/login', 'auth/login/page')
+    ->middleware(RedirectIfSanctumPageAuthenticated::class)
+    ->name('login');
 
 Route::middleware(EnsureSanctumPageAuthenticated::class)->group(function () {
     Route::get('/', function () {

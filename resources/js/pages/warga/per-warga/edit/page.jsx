@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Camera } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -53,7 +54,7 @@ export default function EditWargaPage() {
         event.preventDefault();
 
         if (!userId) {
-            alert('User tidak ditemukan.');
+            toast.error('User tidak ditemukan.');
             return;
         }
 
@@ -65,8 +66,8 @@ export default function EditWargaPage() {
         try {
             await updateUser.mutateAsync({ userId, payload });
             router.visit('/warga/per-warga');
-        } catch (error) {
-            alert(error.response?.data?.message || 'Gagal menyimpan warga.');
+        } catch {
+            // Toast error ditangani oleh hook useUpdateUser.
         }
     };
 

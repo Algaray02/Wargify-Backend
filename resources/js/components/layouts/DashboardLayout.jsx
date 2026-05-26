@@ -40,6 +40,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { authService } from '@/services/authService';
+import { toast } from 'sonner';
 
 export default function DashboardLayout({ children }) {
     const { url } = usePage();
@@ -47,6 +48,9 @@ export default function DashboardLayout({ children }) {
     const handleLogout = async () => {
         try {
             await authService.logout();
+            toast.success('Logout berhasil.');
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Logout gagal. Sesi lokal tetap dibersihkan.');
         } finally {
             localStorage.removeItem('auth_token');
             router.visit('/login');
@@ -103,7 +107,7 @@ export default function DashboardLayout({ children }) {
                         </div>
                         <div>
                             <span className="block text-xl font-black tracking-tight">Wargify</span>
-                            <span className="text-xs font-medium text-cyan-50/70">Command center RT/RW</span>
+                            <span className="text-xs font-medium text-cyan-50/70">Command center RT</span>
                         </div>
                     </div>
                 </SidebarHeader>

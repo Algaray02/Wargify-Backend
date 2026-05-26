@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 
 export const userKeys = {
     all: ['users'],
@@ -28,6 +30,10 @@ export const useCreateUser = () => {
         mutationFn: userService.createUser,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: userKeys.all });
+            toast.success('Warga berhasil ditambahkan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menambah warga.'));
         },
     });
 };
@@ -40,6 +46,25 @@ export const useUpdateUser = () => {
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: userKeys.all });
             queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
+            toast.success('Data warga berhasil disimpan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menyimpan warga.'));
+        },
+    });
+};
+
+export const useDeleteUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: userService.deleteUser,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: userKeys.all });
+            toast.success('Warga berhasil dihapus.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menghapus warga.'));
         },
     });
 };

@@ -110,7 +110,6 @@ export default function WargaPerWargaPage() {
                             <TableRow>
                                 <TableHead className="font-semibold text-muted-foreground w-16">Foto</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Nama ↑↓</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Umur</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Status</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Telepon</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground w-28">Aksi</TableHead>
@@ -141,7 +140,6 @@ export default function WargaPerWargaPage() {
                                         </Avatar>
                                     </TableCell>
                                     <TableCell className="font-medium">{warga.nama}</TableCell>
-                                    <TableCell>{warga.umur}</TableCell>
                                     <TableCell>
                                         <Badge variant={warga.status === 'Kepala Keluarga' ? 'default' : 'secondary'} className={warga.status === 'Kepala Keluarga' ? 'bg-[#00468B]' : ''}>
                                             {warga.status}

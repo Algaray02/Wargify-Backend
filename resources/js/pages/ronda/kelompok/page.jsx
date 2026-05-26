@@ -17,8 +17,8 @@ export default function KelompokRondaPage() {
         try {
             await createGroup.mutateAsync({ name });
             setNewGroupName('');
-        } catch (error) {
-            alert(error.response?.data?.message || 'Gagal menambah kelompok ronda.');
+        } catch {
+            // Toast error ditangani oleh hook useCreateRondaGroup.
         }
     };
 

@@ -4,6 +4,7 @@ import { createInertiaApp } from '@inertiajs/react'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from '@/components/ui/sonner'
 
 const queryClient = new QueryClient()
 
@@ -20,6 +21,7 @@ createInertiaApp({
         createRoot(el).render(
             <QueryClientProvider client={queryClient}>
                 <App {...props} />
+                <Toaster richColors position="top-right" />
             </QueryClientProvider>
         )
     },

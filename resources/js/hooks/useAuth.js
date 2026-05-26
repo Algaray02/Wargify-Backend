@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@/services/authService';
 import { router } from '@inertiajs/react';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 
 export const useAuth = () => {
     const loginMutation = useMutation({
@@ -12,7 +14,7 @@ export const useAuth = () => {
             const userRole = data?.data?.user?.role;
             
             if (userRole !== 'SUPERADMIN') {
-                alert('Akses Ditolak: Hanya Superadmin yang dapat login.');
+                toast.error('Akses ditolak. Hanya Superadmin yang dapat login.');
                 return;
             }
 
@@ -20,11 +22,12 @@ export const useAuth = () => {
             if (token) {
                 localStorage.setItem('auth_token', token);
             }
+            toast.success('Login berhasil.');
             router.visit('/');
         },
         onError: (error) => {
             console.error('Login error:', error);
-            alert(error.response?.data?.message || 'Login failed. Please check your credentials.');
+            toast.error(getErrorMessage(error, 'Login gagal. Periksa kembali username dan password.'));
         }
     });
 

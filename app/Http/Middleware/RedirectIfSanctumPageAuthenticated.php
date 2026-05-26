@@ -8,21 +8,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureSanctumPageAuthenticated
+class RedirectIfSanctumPageAuthenticated
 {
     public function handle(Request $request, Closure $next): Response
     {
         $user = SanctumPageToken::userFromCookie($request);
-        
-        if (! $user) {
-            return redirect()
-                ->route('login')
-                ->withoutCookie('wargify_token');
+
+        if ($user) {
+            Auth::setUser($user);
+            $request->setUserResolver(fn () => $user);
+
+            return redirect('/');
         }
 
-        Auth::setUser($user);
-        $request->setUserResolver(fn () => $user);
+        $response = $next($request);
 
-        return $next($request);
+        return $request->cookie('wargify_token')
+            ? $response->withoutCookie('wargify_token')
+            : $response;
     }
 }

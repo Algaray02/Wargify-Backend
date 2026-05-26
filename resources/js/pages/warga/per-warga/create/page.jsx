@@ -42,8 +42,8 @@ export default function CreateWargaPage() {
         try {
             await createUser.mutateAsync(form);
             router.visit('/warga/per-warga');
-        } catch (error) {
-            alert(error.response?.data?.message || 'Gagal menambah warga.');
+        } catch {
+            // Toast error ditangani oleh hook useCreateUser.
         }
     };
 
