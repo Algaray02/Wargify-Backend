@@ -22,14 +22,14 @@ class UserController extends Controller
     }
 
     public function store(Request $request)
-    {
+    {    
         $validated = $request->validate([
             'family_id' => 'required|exists:families,family_id',
             'username' => 'required|unique:users,username',
             'full_name' => 'required|string',
             'password' => 'required|min:6',
             'role' => 'required|in:KETUA_RT,BENDAHARA,WARGA',
-            'phone_number' => 'nullable|string|unique:users,phone_number',
+            'phone_number' => 'required|string|unique:users,phone_number',
         ]);
 
         $user = User::create([
