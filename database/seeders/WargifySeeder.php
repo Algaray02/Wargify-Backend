@@ -15,7 +15,8 @@ class WargifySeeder extends Seeder
         DB::statement('TRUNCATE TABLE emergency_alerts CASCADE');
         DB::statement('TRUNCATE TABLE facility_reports CASCADE');
         DB::statement('TRUNCATE TABLE announcements CASCADE');
-        DB::statement('TRUNCATE TABLE activity_galleries CASCADE');
+        DB::statement('TRUNCATE TABLE gallery_images CASCADE');
+        DB::statement('TRUNCATE TABLE galleries CASCADE');
         DB::statement('TRUNCATE TABLE activity_participants CASCADE');
         DB::statement('TRUNCATE TABLE activities CASCADE');
         DB::statement('TRUNCATE TABLE treasury_logs CASCADE');
@@ -234,22 +235,29 @@ class WargifySeeder extends Seeder
             ]);
         }
 
-        DB::table('activity_galleries')->insert([
+        $kerjaBaktiGalleryId = Str::uuid();
+
+        DB::table('galleries')->insert([
+            'gallery_id' => $kerjaBaktiGalleryId,
+            'album_name' => 'Dokumentasi Kerja Bakti Minggu Pagi',
+            'event_date' => now()->subDays(7)->toDateString(),
+            'activity_id' => $kerjaBaktiId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('gallery_images')->insert([
             [
-                'photo_id' => Str::uuid(),
-                'activity_id' => $kerjaBaktiId,
-                'uploaded_by' => $ketuaRTId,
-                'photo_url' => '/storage/activity-galleries/kerja-bakti-1.jpg',
-                'caption' => 'Warga membersihkan area taman Blok A',
+                'image_id' => Str::uuid(),
+                'gallery_id' => $kerjaBaktiGalleryId,
+                'image_url' => '/storage/galleries/kerja-bakti-1.jpg',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'photo_id' => Str::uuid(),
-                'activity_id' => $kerjaBaktiId,
-                'uploaded_by' => $ketuaRTId,
-                'photo_url' => '/storage/activity-galleries/kerja-bakti-2.jpg',
-                'caption' => 'Koordinasi pembagian tugas kerja bakti',
+                'image_id' => Str::uuid(),
+                'gallery_id' => $kerjaBaktiGalleryId,
+                'image_url' => '/storage/galleries/kerja-bakti-2.jpg',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -258,21 +266,21 @@ class WargifySeeder extends Seeder
         DB::table('announcements')->insert([
             [
                 'announcement_id' => Str::uuid(),
-                'author_id' => $ketuaRTId,
                 'title' => 'Jadwal Rapat Warga Bulan Mei',
                 'content' => 'Seluruh warga diundang menghadiri rapat bulanan di Balai RT pada pukul 19.00 WIB.',
-                'image_url' => '/storage/announcements/rapat-mei.jpg',
-                'is_important' => true,
+                'banner_url' => '/storage/announcements/rapat-mei.jpg',
+                'status' => 'PUBLISHED',
+                'created_by' => $ketuaRTId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'announcement_id' => Str::uuid(),
-                'author_id' => $bendaharaId,
                 'title' => 'Pembayaran Iuran Mei Dibuka',
                 'content' => 'Pembayaran iuran warga bulan Mei dapat dilakukan melalui QR bendahara atau saat jadwal piket.',
-                'image_url' => null,
-                'is_important' => false,
+                'banner_url' => null,
+                'status' => 'PUBLISHED',
+                'created_by' => $bendaharaId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
