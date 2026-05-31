@@ -12,42 +12,62 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import DataPagination from '@/components/common/DataPagination';
+import SortableTableHead from '@/components/common/SortableTableHead';
+import { usePagination } from '@/hooks/usePagination';
 import { useFamilies } from '@/hooks/useFamilies';
 
 export default function WargaPerKepalaPage() {
     const [search, setSearch] = useState('');
+    const [sort, setSort] = useState({ field: 'nama', direction: 'asc' });
     const { data: families = [], isLoading, isError } = useFamilies();
+
+    const handleSort = (field) => {
+        setSort((current) => ({
+            field,
+            direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    };
 
     const kepalaKeluarga = useMemo(() => {
         return families
             .map((family) => {
-                const head = family.members?.find((member) => member.user_id === family.head_of_family_id)
-                    ?? family.members?.[0];
+                const head = family.members?.find((member) => member.user_id === family.head_of_family_id);
 
                 return {
                     id: family.family_id,
-                    nama: head?.full_name ?? 'Belum ada kepala keluarga',
+                    family,
+                    head,
+                    nama: head?.full_name ?? '',
                     jumlahAnggota: family.members?.length ?? 0,
                     telepon: head?.phone_number ?? '-',
                     avatarUrl: head?.profile_picture_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(head?.full_name ?? 'Keluarga')}&background=00468B&color=fff`,
                 };
             })
+            .filter((warga) => warga.head && warga.family.head_of_family_id)
             .filter((warga) => {
                 const keyword = search.toLowerCase();
-                return [warga.nama, warga.telepon]
+                return [warga.nama, warga.telepon, warga.family.household?.block_number, warga.family.household?.house_number]
                     .some((value) => String(value).toLowerCase().includes(keyword));
+            })
+            .sort((left, right) => {
+                const direction = sort.direction === 'asc' ? 1 : -1;
+                const leftValue = left[sort.field] ?? '';
+                const rightValue = right[sort.field] ?? '';
+
+                if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+                    return (leftValue - rightValue) * direction;
+                }
+
+                return String(leftValue).localeCompare(String(rightValue), 'id-ID', {
+                    numeric: true,
+                    sensitivity: 'base',
+                }) * direction;
             });
-    }, [families, search]);
+    }, [families, search, sort]);
+
+    const pagination = usePagination(kepalaKeluarga, 10);
 
     return (
         <DashboardLayout>
@@ -75,9 +95,15 @@ export default function WargaPerKepalaPage() {
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="font-semibold text-muted-foreground w-16">Foto</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Nama Kepala ↑↓</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Jumlah Anggota</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Telepon</TableHead>
+                                <SortableTableHead field="nama" sortField={sort.field} sortDirection={sort.direction} onSort={handleSort}>
+                                    Nama Kepala
+                                </SortableTableHead>
+                                <SortableTableHead field="jumlahAnggota" sortField={sort.field} sortDirection={sort.direction} onSort={handleSort}>
+                                    Jumlah Anggota
+                                </SortableTableHead>
+                                <SortableTableHead field="telepon" sortField={sort.field} sortDirection={sort.direction} onSort={handleSort}>
+                                    Telepon
+                                </SortableTableHead>
                                 <TableHead className="font-semibold text-muted-foreground w-28">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -97,7 +123,7 @@ export default function WargaPerKepalaPage() {
                                     <TableCell colSpan={5} className="py-8 text-center text-slate-500">Tidak ada data kepala keluarga.</TableCell>
                                 </TableRow>
                             )}
-                            {kepalaKeluarga.map((warga) => (
+                            {pagination.paginatedItems.map((warga) => (
                                 <TableRow key={warga.id}>
                                     <TableCell>
                                         <Avatar className="w-10 h-10 border border-muted">
@@ -109,7 +135,7 @@ export default function WargaPerKepalaPage() {
                                     <TableCell>{warga.jumlahAnggota}</TableCell>
                                     <TableCell>{warga.telepon}</TableCell>
                                     <TableCell>
-                                        <Link href="/warga/per-kepala/kelola">
+                                        <Link href={`/warga/per-kepala/kelola?familyId=${warga.id}`}>
                                             <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
                                                 <SquarePen className="w-4 h-4 mr-2" />
                                                 Kelola
@@ -122,34 +148,14 @@ export default function WargaPerKepalaPage() {
                     </Table>
                 </div>
 
-                {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                        Menampilkan {kepalaKeluarga.length} dari {families.length} baris
-                    </div>
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious href="#" className="pointer-events-none opacity-50" />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#" isActive className="bg-[#00468B] text-white hover:bg-[#003366] hover:text-white">1</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">2</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">3</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationNext href="#" />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
+                <DataPagination
+                    from={pagination.from}
+                    onPageChange={pagination.setPage}
+                    page={pagination.page}
+                    to={pagination.to}
+                    totalItems={pagination.totalItems}
+                    totalPages={pagination.totalPages}
+                />
             </div>
         </DashboardLayout>
     );

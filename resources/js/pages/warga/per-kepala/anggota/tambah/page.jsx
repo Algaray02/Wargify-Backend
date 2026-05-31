@@ -1,11 +1,11 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useMemo, useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import DataPagination from '@/components/common/DataPagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -15,45 +15,57 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { useAddFamilyMember, useFamily } from '@/hooks/useFamilies';
+import { usePagination } from '@/hooks/usePagination';
+import { useUsers } from '@/hooks/useUsers';
 
 export default function TambahAnggotaKeluargaPage() {
-    const dummyData = Array(8).fill({
-        nama: 'Warga Belum Terdaftar',
-        umur: 30,
-        status: 'Anggota Keluarga',
-        telp: '08123456789',
-        avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Orang'
-    });
+    const params = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search);
+    const familyId = params.get('familyId');
+    const [search, setSearch] = useState('');
+    const { data: family } = useFamily(familyId);
+    const { data: users = [], isLoading, isError } = useUsers();
+    const addMember = useAddFamilyMember();
+
+    const familyHead = family?.members?.find((member) => member.user_id === family?.head_of_family_id);
+
+    const unassignedUsers = useMemo(() => {
+        const keyword = search.toLowerCase();
+
+        return users
+            .filter((user) => !user.family_id)
+            .filter((user) => [user.full_name, user.phone_number, user.email]
+                .some((value) => String(value ?? '').toLowerCase().includes(keyword)));
+    }, [search, users]);
+
+    const pagination = usePagination(unassignedUsers, 10);
 
     return (
         <DashboardLayout>
             <Head title="Tambah Anggota Keluarga - Wargify" />
             
             <div className="p-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 max-w-2xl">Tambah Anggota Untuk Keluarga Tatang Sutarma</h1>
-                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
-                        Pilih warga yang akan dimasukkan ke dalam keluarga ini.
-                    </p>
+                <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h1 className="max-w-2xl text-3xl font-bold text-gray-900">
+                            Tambah Anggota Untuk Keluarga {familyHead?.full_name ?? (familyId ? `#${familyId}` : '')}
+                        </h1>
+                        <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
+                            Daftar ini hanya menampilkan warga yang belum tersambung ke family mana pun.
+                        </p>
+                    </div>
+                    <Link href={`/warga/per-kepala/anggota${familyId ? `?familyId=${familyId}` : ''}`}>
+                        <Button variant="outline">Kembali</Button>
+                    </Link>
                 </div>
                 
-                <div className="flex justify-between items-center mb-6">
-                    <Input 
-                        placeholder="Cari Warga" 
+                <div className="mb-6">
+                    <Input
+                        placeholder="Cari warga"
                         className="max-w-sm bg-white"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
                     />
-                    <Button className="bg-[#00468B] hover:bg-[#003366] text-white">
-                        <Save className="w-4 h-4 mr-2" />
-                        Simpan
-                    </Button>
                 </div>
                 
                 <div className="rounded-md border overflow-hidden bg-white">
@@ -61,30 +73,52 @@ export default function TambahAnggotaKeluargaPage() {
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="font-semibold text-muted-foreground w-16">Foto</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Nama ↑↓</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Umur</TableHead>
+                                <TableHead className="font-semibold text-muted-foreground">Nama</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Status</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Telepon</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground w-20 text-center">Aksi</TableHead>
+                                <TableHead className="font-semibold text-muted-foreground w-36">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dummyData.map((anggota, index) => (
-                                <TableRow key={index}>
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Memuat warga...</TableCell>
+                                </TableRow>
+                            )}
+                            {isError && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-red-600">Gagal memuat warga.</TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && !isError && unassignedUsers.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">Tidak ada warga yang belum tersambung family.</TableCell>
+                                </TableRow>
+                            )}
+                            {pagination.paginatedItems.map((anggota) => (
+                                <TableRow key={anggota.user_id}>
                                     <TableCell>
                                         <Avatar className="w-10 h-10 border border-muted bg-blue-100">
-                                            <AvatarImage src={anggota.avatar} alt={anggota.nama} />
-                                            <AvatarFallback>{anggota.nama.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                            <AvatarImage src={anggota.profile_picture_url} alt={anggota.full_name} />
+                                            <AvatarFallback>{anggota.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                     </TableCell>
-                                    <TableCell className="font-medium">{anggota.nama}</TableCell>
-                                    <TableCell>{anggota.umur}</TableCell>
+                                    <TableCell className="font-medium">{anggota.full_name}</TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary">{anggota.status}</Badge>
+                                        <Badge variant="secondary">Belum tersambung</Badge>
                                     </TableCell>
-                                    <TableCell>{anggota.telp}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Checkbox className="w-5 h-5 rounded border-gray-300 data-[state=checked]:bg-[#00468B] data-[state=checked]:border-[#00468B]" />
+                                    <TableCell>{anggota.phone_number ?? '-'}</TableCell>
+                                    <TableCell>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="bg-[#00468B] text-white hover:bg-[#003366]"
+                                            disabled={!familyId || addMember.isPending}
+                                            onClick={() => addMember.mutate({ familyId, userId: anggota.user_id })}
+                                        >
+                                            <UserPlus className="mr-2 size-4" />
+                                            Tambah
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -92,22 +126,14 @@ export default function TambahAnggotaKeluargaPage() {
                     </Table>
                 </div>
 
-                {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                        10 dari 4 baris
-                    </div>
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious href="#" className="pointer-events-none opacity-50" />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationNext href="#" className="pointer-events-none opacity-50" />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
+                <DataPagination
+                    from={pagination.from}
+                    onPageChange={pagination.setPage}
+                    page={pagination.page}
+                    to={pagination.to}
+                    totalItems={pagination.totalItems}
+                    totalPages={pagination.totalPages}
+                />
             </div>
         </DashboardLayout>
     );
