@@ -15,12 +15,25 @@ class WargifySeeder extends Seeder
         DB::statement('TRUNCATE TABLE emergency_alerts CASCADE');
         DB::statement('TRUNCATE TABLE facility_reports CASCADE');
         DB::statement('TRUNCATE TABLE announcements CASCADE');
-        DB::statement('TRUNCATE TABLE activity_galleries CASCADE');
+        DB::statement('TRUNCATE TABLE gallery_images CASCADE');
+        DB::statement('TRUNCATE TABLE galleries CASCADE');
+        DB::statement('TRUNCATE TABLE activity_target_users CASCADE');
+        DB::statement('TRUNCATE TABLE activity_target_groups CASCADE');
         DB::statement('TRUNCATE TABLE activity_participants CASCADE');
         DB::statement('TRUNCATE TABLE activities CASCADE');
         DB::statement('TRUNCATE TABLE treasury_logs CASCADE');
         DB::statement('TRUNCATE TABLE iuran_payments CASCADE');
         DB::statement('TRUNCATE TABLE iuran_periods CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_logs CASCADE');
+        DB::statement('TRUNCATE TABLE patrol_checkpoint_logs CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_attendances CASCADE');
+        DB::statement('TRUNCATE TABLE schedule_checkpoints CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_schedules CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_group_members CASCADE');
+        DB::statement('TRUNCATE TABLE ronda_groups CASCADE');
+        DB::statement('TRUNCATE TABLE checkpoints CASCADE');
+        DB::statement('TRUNCATE TABLE user_group_members CASCADE');
+        DB::statement('TRUNCATE TABLE citizen_groups CASCADE');
         DB::statement('TRUNCATE TABLE users CASCADE');
         DB::statement('TRUNCATE TABLE families CASCADE');
         DB::statement('TRUNCATE TABLE households CASCADE');
@@ -146,7 +159,64 @@ class WargifySeeder extends Seeder
             $wargaIds[] = $uId;
         }
 
-        // 4. IURAN PERIODS & PAYMENTS
+        // 4. KELOMPOK WARGA
+        $bapakGroupId = Str::uuid();
+        $ibuGroupId = Str::uuid();
+        $pemudaGroupId = Str::uuid();
+
+        DB::table('citizen_groups')->insert([
+            [
+                'group_id' => $bapakGroupId,
+                'name' => 'Bapak-Bapak',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'group_id' => $ibuGroupId,
+                'name' => 'Ibu-Ibu PKK',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'group_id' => $pemudaGroupId,
+                'name' => 'Pemuda',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('user_group_members')->insert([
+            [
+                'id' => Str::uuid(),
+                'group_id' => $bapakGroupId,
+                'user_id' => $ketuaRTId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => Str::uuid(),
+                'group_id' => $bapakGroupId,
+                'user_id' => $wargaIds[0],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => Str::uuid(),
+                'group_id' => $ibuGroupId,
+                'user_id' => $wargaIds[1],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => Str::uuid(),
+                'group_id' => $pemudaGroupId,
+                'user_id' => $wargaIds[2],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        // 5. IURAN PERIODS & PAYMENTS
         $periodId = Str::uuid();
         DB::table('iuran_periods')->insert([
             'period_id' => $periodId, 'period_name' => 'Iuran Mei 2026',
@@ -164,7 +234,7 @@ class WargifySeeder extends Seeder
             ]);
         }
 
-        // 5. CATATAN KAS
+        // 6. CATATAN KAS
         DB::table('treasury_logs')->insert([
             [
                 'log_id' => Str::uuid(),
@@ -190,7 +260,143 @@ class WargifySeeder extends Seeder
             ],
         ]);
 
-        // 6. KEGIATAN, GALERI, DAN PENGUMUMAN
+        // 7. RONDA
+        $checkpointMainId = Str::uuid();
+        $checkpointGateId = Str::uuid();
+        $checkpointParkId = Str::uuid();
+        $rondaGroupId = Str::uuid();
+        $rondaScheduleCompletedId = Str::uuid();
+        $rondaScheduleUpcomingId = Str::uuid();
+
+        DB::table('checkpoints')->insert([
+            [
+                'checkpoint_id' => $checkpointMainId,
+                'name' => 'Pos Ronda Utama',
+                'latitude' => -7.04830000,
+                'longitude' => 110.43810000,
+                'qr_code_data' => 'QR-RONDA-POS-UTAMA',
+                'is_main_pos' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'checkpoint_id' => $checkpointGateId,
+                'name' => 'Gerbang Blok A',
+                'latitude' => -7.04795000,
+                'longitude' => 110.43905000,
+                'qr_code_data' => 'QR-RONDA-GERBANG-A',
+                'is_main_pos' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'checkpoint_id' => $checkpointParkId,
+                'name' => 'Taman Warga',
+                'latitude' => -7.04885000,
+                'longitude' => 110.43960000,
+                'qr_code_data' => 'QR-RONDA-TAMAN',
+                'is_main_pos' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('ronda_groups')->insert([
+            'group_id' => $rondaGroupId,
+            'name' => 'Regu Ronda A',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([$ketuaRTId, $wargaIds[0], $wargaIds[2]] as $memberId) {
+            DB::table('ronda_group_members')->insert([
+                'id' => Str::uuid(),
+                'group_id' => $rondaGroupId,
+                'user_id' => $memberId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('ronda_schedules')->insert([
+            [
+                'schedule_id' => $rondaScheduleCompletedId,
+                'group_id' => $rondaGroupId,
+                'coordinator_id' => $ketuaRTId,
+                'schedule_date' => now()->subDay()->toDateString(),
+                'shift_start' => now()->subDay()->setTime(22, 0),
+                'shift_end' => now()->setTime(1, 0),
+                'status' => 'COMPLETED',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'schedule_id' => $rondaScheduleUpcomingId,
+                'group_id' => $rondaGroupId,
+                'coordinator_id' => $wargaIds[0],
+                'schedule_date' => now()->addDay()->toDateString(),
+                'shift_start' => now()->addDay()->setTime(22, 0),
+                'shift_end' => now()->addDays(2)->setTime(1, 0),
+                'status' => 'SCHEDULED',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        foreach ([$rondaScheduleCompletedId, $rondaScheduleUpcomingId] as $scheduleId) {
+            foreach ([$checkpointMainId, $checkpointGateId, $checkpointParkId] as $checkpointId) {
+                DB::table('schedule_checkpoints')->insert([
+                    'id' => Str::uuid(),
+                    'schedule_id' => $scheduleId,
+                    'checkpoint_id' => $checkpointId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        foreach ([$ketuaRTId, $wargaIds[0]] as $attendeeId) {
+            DB::table('ronda_attendances')->insert([
+                'attendance_id' => Str::uuid(),
+                'schedule_id' => $rondaScheduleCompletedId,
+                'user_id' => $attendeeId,
+                'scanned_at' => now()->subDay()->setTime(22, 5),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        foreach ([
+            [$checkpointMainId, now()->subDay()->setTime(22, 10)],
+            [$checkpointGateId, now()->subDay()->setTime(22, 40)],
+            [$checkpointParkId, now()->subDay()->setTime(23, 20)],
+        ] as [$checkpointId, $scannedAt]) {
+            DB::table('patrol_checkpoint_logs')->insert([
+                'log_id' => Str::uuid(),
+                'schedule_id' => $rondaScheduleCompletedId,
+                'checkpoint_id' => $checkpointId,
+                'scanned_by' => $ketuaRTId,
+                'scanned_at' => $scannedAt,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('ronda_logs')->insert([
+            'log_id' => Str::uuid(),
+            'schedule_id' => $rondaScheduleCompletedId,
+            'path_data' => json_encode([
+                ['lat' => -7.04830000, 'lng' => 110.43810000, 'time' => now()->subDay()->setTime(22, 10)->toISOString(), 'name' => 'Pos Ronda Utama'],
+                ['lat' => -7.04795000, 'lng' => 110.43905000, 'time' => now()->subDay()->setTime(22, 40)->toISOString(), 'name' => 'Gerbang Blok A'],
+                ['lat' => -7.04885000, 'lng' => 110.43960000, 'time' => now()->subDay()->setTime(23, 20)->toISOString(), 'name' => 'Taman Warga'],
+            ]),
+            'distance_covered' => 1.85,
+            'duration' => 90,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 8. KEGIATAN, GALERI, DAN PENGUMUMAN
         $rapatId = Str::uuid();
         $kerjaBaktiId = Str::uuid();
 
@@ -201,8 +407,9 @@ class WargifySeeder extends Seeder
                 'title' => 'Rapat Anggaran RT Mei 2026',
                 'description' => 'Pembahasan alokasi kas RT untuk perawatan fasilitas umum.',
                 'activity_date' => now()->addDays(3),
-                'location_name' => 'Balai RT',
-                'attendance_qr_code' => 'QR-ACT-RAPAT-MEI-2026',
+                'location_name' => 'Blok A No. 1',
+                'household_id' => $ketuaRTHousehold,
+                'attendance_qr_code' => 'QR-HOUSE-A-1',
                 'status' => 'ANNOUNCED',
                 'created_by' => $ketuaRTId,
                 'created_at' => now(),
@@ -215,6 +422,7 @@ class WargifySeeder extends Seeder
                 'description' => 'Membersihkan selokan dan area taman warga.',
                 'activity_date' => now()->subDays(7),
                 'location_name' => 'Taman Blok A',
+                'household_id' => null,
                 'attendance_qr_code' => null,
                 'status' => 'COMPLETED',
                 'created_by' => $ketuaRTId,
@@ -223,12 +431,50 @@ class WargifySeeder extends Seeder
             ],
         ]);
 
+        DB::table('activity_target_groups')->insert([
+            [
+                'id' => Str::uuid(),
+                'activity_id' => $rapatId,
+                'group_id' => $bapakGroupId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('activity_target_users')->insert([
+            [
+                'id' => Str::uuid(),
+                'activity_id' => $rapatId,
+                'user_id' => $wargaIds[1],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => Str::uuid(),
+                'activity_id' => $kerjaBaktiId,
+                'user_id' => $wargaIds[0],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => Str::uuid(),
+                'activity_id' => $kerjaBaktiId,
+                'user_id' => $wargaIds[1],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
         foreach ($wargaIds as $index => $wId) {
+            if ($index >= 2) {
+                continue;
+            }
+
             DB::table('activity_participants')->insert([
                 'participant_id' => Str::uuid(),
                 'activity_id' => $rapatId,
                 'user_id' => $wId,
-                'attended_at' => $index < 2 ? now()->addDays(3)->setTime(19, 5 + $index) : null,
+                'attended_at' => now()->addDays(3)->setTime(19, 5 + $index),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -255,10 +501,12 @@ class WargifySeeder extends Seeder
             ],
         ]);
 
+        $rapatAnnouncementId = Str::uuid();
+        $iuranAnnouncementId = Str::uuid();
+
         DB::table('announcements')->insert([
             [
-                'announcement_id' => Str::uuid(),
-                'author_id' => $ketuaRTId,
+                'announcement_id' => $rapatAnnouncementId,
                 'title' => 'Jadwal Rapat Warga Bulan Mei',
                 'content' => 'Seluruh warga diundang menghadiri rapat bulanan di Balai RT pada pukul 19.00 WIB.',
                 'image_url' => '/storage/announcements/rapat-mei.jpg',
@@ -267,8 +515,7 @@ class WargifySeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'announcement_id' => Str::uuid(),
-                'author_id' => $bendaharaId,
+                'announcement_id' => $iuranAnnouncementId,
                 'title' => 'Pembayaran Iuran Mei Dibuka',
                 'content' => 'Pembayaran iuran warga bulan Mei dapat dilakukan melalui QR bendahara atau saat jadwal piket.',
                 'image_url' => null,
@@ -278,7 +525,7 @@ class WargifySeeder extends Seeder
             ],
         ]);
 
-        // 7. EMERGENCY ALERTS & LAPORAN FASILITAS
+        // 9. EMERGENCY ALERTS & LAPORAN FASILITAS
         DB::table('emergency_alerts')->insert([
             'alert_id' => Str::uuid(), 'sender_id' => $wargaIds[0],
             'latitude' => -7.0483, 'longitude' => 110.4381,

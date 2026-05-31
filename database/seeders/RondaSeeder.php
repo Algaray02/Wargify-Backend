@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Checkpoint;
+use App\Models\PatrolCheckpointLog;
 use App\Models\RondaGroup;
+use App\Models\RondaLog;
 use App\Models\RondaSchedule;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,8 @@ class RondaSeeder extends Seeder
 {
     public function run(): void
     {
+        DB::statement('TRUNCATE TABLE ronda_logs CASCADE');
+        DB::statement('TRUNCATE TABLE patrol_checkpoint_logs CASCADE');
         DB::statement('TRUNCATE TABLE ronda_attendances CASCADE');
         DB::statement('TRUNCATE TABLE schedule_checkpoints CASCADE');
         DB::statement('TRUNCATE TABLE ronda_schedules CASCADE');
@@ -22,55 +26,131 @@ class RondaSeeder extends Seeder
         DB::statement('TRUNCATE TABLE ronda_groups CASCADE');
         DB::statement('TRUNCATE TABLE checkpoints CASCADE');
 
-        // 1. Buat Checkpoint (Titik Pantau)
         $posUtama = Checkpoint::create([
             'name' => 'Pos Ronda Utama',
-            'latitude' => -7.0482, 
-            'longitude' => 110.4390,
-            'qr_code_data' => 'QR-CHECK-POS-01',
-            'is_main_pos' => true
+            'latitude' => -7.04830000,
+            'longitude' => 110.43810000,
+            'qr_code_data' => 'QR-RONDA-POS-UTAMA',
+            'is_main_pos' => true,
         ]);
 
-        $blokC = Checkpoint::create([
-            'name' => 'Portal Blok C',
-            'latitude' => -7.0485,
-            'longitude' => 110.4395,
-            'qr_code_data' => 'QR-CHECK-BLOK-C',
-            'is_main_pos' => false
+        $gerbangBlokA = Checkpoint::create([
+            'name' => 'Gerbang Blok A',
+            'latitude' => -7.04795000,
+            'longitude' => 110.43905000,
+            'qr_code_data' => 'QR-RONDA-GERBANG-A',
+            'is_main_pos' => false,
         ]);
 
-        // 2. Buat Grup Ronda
-        $grupMacan = RondaGroup::create([
-            'name' => 'Grup Macan (Senin)'
+        $tamanWarga = Checkpoint::create([
+            'name' => 'Taman Warga',
+            'latitude' => -7.04885000,
+            'longitude' => 110.43960000,
+            'qr_code_data' => 'QR-RONDA-TAMAN',
+            'is_main_pos' => false,
         ]);
 
-        // 3. Ambil beberapa user untuk dijadikan anggota & koordinator
-        // Pastikan kamu sudah punya user di database (hasil seeder User sebelumnya)
-        $users = User::limit(3)->get();
+        $group = RondaGroup::create([
+            'name' => 'Regu Ronda A',
+        ]);
 
-        if ($users->count() > 0) {
-            $koordinator = $users->first();
+        $users = User::whereIn('role', ['KETUA_RT', 'WARGA', 'BENDAHARA'])
+            ->orderByRaw("case role when 'KETUA_RT' then 0 when 'WARGA' then 1 when 'BENDAHARA' then 2 else 3 end")
+            ->limit(4)
+            ->get();
 
-            // Masukkan user ke grup (tabel pivot ronda_group_members)
-            foreach ($users as $user) {
-                $grupMacan->members()->attach($user->user_id, ['id' => Str::uuid()]);
-            }
+        if ($users->isEmpty()) {
+            return;
+        }
 
-            // 4. Buat Jadwal Ronda untuk Hari Ini
-            $schedule = RondaSchedule::create([
-                'group_id' => $grupMacan->group_id,
-                'coordinator_id' => $koordinator->user_id,
-                'schedule_date' => now()->toDateString(),
-                'shift_start' => Carbon::now()->setHour(21)->setMinute(0), // Jam 9 malam
-                'shift_end' => Carbon::now()->addDay()->setHour(3)->setMinute(0), // Jam 3 pagi
-                'status' => 'SCHEDULED'
-            ]);
+        $coordinator = $users->firstWhere('role', 'KETUA_RT') ?? $users->first();
+        $memberIds = $users->pluck('user_id')->values();
 
-            // 5. Hubungkan Jadwal dengan Checkpoint (tabel pivot schedule_checkpoints)
-            $schedule->checkpoints()->attach([
-                $posUtama->checkpoint_id => ['id' => (string) Str::uuid()],
-                $blokC->checkpoint_id => ['id' => (string) Str::uuid()]
+        foreach ($memberIds as $userId) {
+            DB::table('ronda_group_members')->insert([
+                'id' => (string) Str::uuid(),
+                'group_id' => $group->group_id,
+                'user_id' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
+
+        $checkpoints = collect([$posUtama, $gerbangBlokA, $tamanWarga]);
+        $completedSchedule = RondaSchedule::create([
+            'group_id' => $group->group_id,
+            'coordinator_id' => $coordinator->user_id,
+            'schedule_date' => now()->subDay()->toDateString(),
+            'shift_start' => Carbon::yesterday()->setTime(21, 0),
+            'shift_end' => Carbon::today()->setTime(0, 30),
+            'status' => 'COMPLETED',
+        ]);
+        $ongoingSchedule = RondaSchedule::create([
+            'group_id' => $group->group_id,
+            'coordinator_id' => $coordinator->user_id,
+            'schedule_date' => now()->toDateString(),
+            'shift_start' => Carbon::today()->setTime(21, 0),
+            'shift_end' => Carbon::tomorrow()->setTime(0, 30),
+            'status' => 'ONGOING',
+        ]);
+
+        foreach ([$completedSchedule, $ongoingSchedule] as $schedule) {
+            DB::table('schedule_checkpoints')->insert($checkpoints->map(fn (Checkpoint $checkpoint) => [
+                'id' => (string) Str::uuid(),
+                'schedule_id' => $schedule->schedule_id,
+                'checkpoint_id' => $checkpoint->checkpoint_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])->all());
+        }
+
+        DB::table('ronda_attendances')->insert($memberIds->take(3)->map(fn (string $userId, int $index) => [
+            'attendance_id' => (string) Str::uuid(),
+            'schedule_id' => $completedSchedule->schedule_id,
+            'user_id' => $userId,
+            'scanned_at' => Carbon::yesterday()->setTime(20, 55)->addMinutes($index * 4),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all());
+
+        DB::table('ronda_attendances')->insert($memberIds->take(2)->map(fn (string $userId, int $index) => [
+            'attendance_id' => (string) Str::uuid(),
+            'schedule_id' => $ongoingSchedule->schedule_id,
+            'user_id' => $userId,
+            'scanned_at' => Carbon::today()->setTime(20, 55)->addMinutes($index * 5),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all());
+
+        $this->seedRondaProgress($completedSchedule, $checkpoints, $coordinator->user_id, Carbon::yesterday()->setTime(21, 12), 1.85, 90);
+        $this->seedRondaProgress($ongoingSchedule, $checkpoints->take(2), $coordinator->user_id, Carbon::today()->setTime(21, 10), 0.92, 38);
+    }
+
+    private function seedRondaProgress(RondaSchedule $schedule, $checkpoints, string $coordinatorId, Carbon $startedAt, float $distance, int $duration): void
+    {
+        $pathData = $checkpoints->values()->map(function (Checkpoint $checkpoint, int $index) use ($startedAt) {
+            return [
+                'lat' => (float) $checkpoint->latitude,
+                'lng' => (float) $checkpoint->longitude,
+                'time' => $startedAt->copy()->addMinutes($index * 18)->toIso8601String(),
+                'name' => $checkpoint->name,
+            ];
+        })->all();
+
+        foreach ($checkpoints->values() as $index => $checkpoint) {
+            PatrolCheckpointLog::create([
+                'schedule_id' => $schedule->schedule_id,
+                'checkpoint_id' => $checkpoint->checkpoint_id,
+                'scanned_by' => $coordinatorId,
+                'scanned_at' => $startedAt->copy()->addMinutes($index * 18),
+            ]);
+        }
+
+        RondaLog::create([
+            'schedule_id' => $schedule->schedule_id,
+            'path_data' => $pathData,
+            'distance_covered' => $distance,
+            'duration' => $duration,
+        ]);
     }
 }

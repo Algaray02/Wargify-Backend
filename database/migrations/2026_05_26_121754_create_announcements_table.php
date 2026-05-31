@@ -18,11 +18,13 @@ return new class extends Migration
             $table->string('banner_url')->nullable();
             $table->string('status')->default('draft'); //draft, published
             $table->uuid('created_by');
+            $table->foreignUuid('activity_id')->nullable()->constrained('activities', 'activity_id')->nullOnDelete();
             $table->timestamps();
 
             //Asinc to users table
             $table->foreign('created_by')->references('user_id')->on('users')->onDelete('cascade');
         });
+
     }
 
     /**

@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'supabase' => [
+        'url' => env('SUPABASE_URL'),
+        'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
+        'buckets' => [
+            'profile' => env('SUPABASE_PROFILE_BUCKET', 'profile-pictures'),
+            'activity' => env('SUPABASE_ACTIVITY_BUCKET', 'activity-photos'),
+            'gallery' => env('SUPABASE_GALLERY_BUCKET', 'gallery-images'),
+            'report' => env('SUPABASE_REPORT_BUCKET', 'facility-reports'),
+            'treasury' => env('SUPABASE_TREASURY_BUCKET', 'treasury-receipts'),
+        ],
+    ],
+
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'client_email' => env('FIREBASE_CLIENT_EMAIL'),
+        'private_key' => env('FIREBASE_PRIVATE_KEY'),
+    ],
+
 ];

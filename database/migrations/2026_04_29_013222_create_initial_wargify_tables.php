@@ -37,6 +37,20 @@ return new class extends Migration {
             $table->timestamps();
         });
 
+        Schema::create('citizen_groups', function (Blueprint $table) {
+            $table->uuid('group_id')->primary();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::create('user_group_members', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('group_id')->constrained('citizen_groups', 'group_id')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained('users', 'user_id')->cascadeOnDelete();
+            $table->timestamps();
+            $table->unique(['group_id', 'user_id']);
+        });
+
         // B. KEUANGAN (IURAN)
         Schema::create('iuran_periods', function (Blueprint $table) {
             $table->uuid('period_id')->primary();
@@ -120,6 +134,24 @@ return new class extends Migration {
             $table->timestamps();
         });
 
+        Schema::create('patrol_checkpoint_logs', function (Blueprint $table) {
+            $table->uuid('log_id')->primary();
+            $table->foreignUuid('schedule_id')->constrained('ronda_schedules', 'schedule_id');
+            $table->foreignUuid('checkpoint_id')->constrained('checkpoints', 'checkpoint_id');
+            $table->foreignUuid('scanned_by')->constrained('users', 'user_id');
+            $table->timestamp('scanned_at');
+            $table->timestamps();
+        });
+
+        Schema::create('ronda_logs', function (Blueprint $table) {
+            $table->uuid('log_id')->primary();
+            $table->foreignUuid('schedule_id')->constrained('ronda_schedules', 'schedule_id');
+            $table->json('path_data')->nullable();
+            $table->decimal('distance_covered', 10, 2)->default(0);
+            $table->integer('duration')->default(0);
+            $table->timestamps();
+        });
+
         // D. KEGIATAN & PENGUMUMAN
         Schema::create('activities', function (Blueprint $table) {
             $table->uuid('activity_id')->primary();
@@ -128,7 +160,8 @@ return new class extends Migration {
             $table->text('description');
             $table->timestamp('activity_date');
             $table->string('location_name');
-            $table->text('attendance_qr_code', 255)->unique()->nullable();
+            $table->foreignUuid('household_id')->nullable()->constrained('households', 'household_id')->nullOnDelete();
+            $table->text('attendance_qr_code', 255)->nullable();
             $table->enum('status', ['DRAFT', 'ANNOUNCED', 'COMPLETED'])->default('DRAFT');
             $table->foreignUuid('created_by')->constrained('users', 'user_id');
             $table->timestamps();
@@ -142,23 +175,20 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('activity_galleries', function (Blueprint $table) {
-            $table->uuid('photo_id')->primary();
-            $table->foreignUuid('activity_id')->constrained('activities', 'activity_id');
-            $table->foreignUuid('uploaded_by')->constrained('users', 'user_id');
-            $table->string('photo_url');
-            $table->string('caption')->nullable();
+        Schema::create('activity_target_groups', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('activity_id')->constrained('activities', 'activity_id')->cascadeOnDelete();
+            $table->foreignUuid('group_id')->constrained('citizen_groups', 'group_id')->cascadeOnDelete();
             $table->timestamps();
+            $table->unique(['activity_id', 'group_id']);
         });
 
-        Schema::create('announcements', function (Blueprint $table) {
-            $table->uuid('announcement_id')->primary();
-            $table->foreignUuid('author_id')->constrained('users', 'user_id');
-            $table->string('title');
-            $table->text('content');
-            $table->string('image_url')->nullable();
-            $table->boolean('is_important')->default(false);
+        Schema::create('activity_target_users', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('activity_id')->constrained('activities', 'activity_id')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained('users', 'user_id')->cascadeOnDelete();
             $table->timestamps();
+            $table->unique(['activity_id', 'user_id']);
         });
 
         // E. SOS & LAPORAN
@@ -193,8 +223,12 @@ return new class extends Migration {
         Schema::dropIfExists('emergency_alerts');
         Schema::dropIfExists('announcements');
         Schema::dropIfExists('activity_galleries');
+        Schema::dropIfExists('activity_target_users');
+        Schema::dropIfExists('activity_target_groups');
         Schema::dropIfExists('activity_participants');
         Schema::dropIfExists('activities');
+        Schema::dropIfExists('ronda_logs');
+        Schema::dropIfExists('patrol_checkpoint_logs');
         Schema::dropIfExists('ronda_attendances');
         Schema::dropIfExists('schedule_checkpoints');
         Schema::dropIfExists('ronda_schedules');
@@ -204,6 +238,8 @@ return new class extends Migration {
         Schema::dropIfExists('treasury_logs');
         Schema::dropIfExists('iuran_payments');
         Schema::dropIfExists('iuran_periods');
+        Schema::dropIfExists('user_group_members');
+        Schema::dropIfExists('citizen_groups');
         Schema::dropIfExists('users');
         Schema::dropIfExists('families');
         Schema::dropIfExists('households');

@@ -7,9 +7,29 @@ use App\Models\Gallery;
 use App\Models\GalleryImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class GalleryController extends Controller
 {
+    /**
+     * Mengambil daftar album galeri.
+     * GET /api/v1/galleries
+     */
+    public function index(): JsonResponse
+    {
+        $galleries = Gallery::with(['images', 'activity:activity_id,title,location_name'])
+            ->withCount('images')
+            ->latest('event_date')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar album galeri berhasil diambil.',
+            'data' => $galleries,
+        ]);
+    }
+
     /**
      * Membuat wadah album acara baru.
      * POST /api/v1/galleries
@@ -27,7 +47,7 @@ class GalleryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Album galeri baru berhasil dibuat.',
-            'data'    => $gallery
+            'data'    => $gallery->load(['images', 'activity:activity_id,title,location_name'])
         ], 201);
     }
 
@@ -47,6 +67,29 @@ class GalleryController extends Controller
     }
 
     /**
+     * Mengubah metadata album galeri.
+     * PATCH /api/v1/galleries/{id}
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        $gallery = Gallery::findOrFail($id);
+
+        $validated = $request->validate([
+            'album_name'  => 'sometimes|required|string|max:255',
+            'event_date'  => 'sometimes|required|date',
+            'activity_id' => 'nullable|exists:activities,activity_id',
+        ]);
+
+        $gallery->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Album galeri berhasil diperbarui.',
+            'data'    => $gallery->fresh(['images', 'activity:activity_id,title,location_name']),
+        ]);
+    }
+
+    /**
      * Mengunggah foto secara kolektif (Multiple Upload) ke dalam album.
      * POST /api/v1/galleries/{id}/images
      */
@@ -56,11 +99,13 @@ class GalleryController extends Controller
 
         $request->validate([
             'images'   => 'required|array',
-            'images.*' => 'required|string', // Sementara menerima array string URL/path foto dari storage
+            'images.*' => 'required|image|max:8192',
         ]);
 
         $uploadedImages = [];
-        foreach ($request->images as $url) {
+        foreach ($request->file('images') as $image) {
+            $url = $this->uploadGalleryImage($image, $gallery->gallery_id);
+
             $uploadedImages[] = GalleryImage::create([
                 'gallery_id' => $gallery->gallery_id,
                 'image_url'  => $url,
@@ -87,5 +132,51 @@ class GalleryController extends Controller
             'success' => true,
             'message' => 'Foto berhasil dihapus dari album.'
         ]);
+    }
+
+    /**
+     * Menghapus album beserta foto di database.
+     * DELETE /api/v1/galleries/{id}
+     */
+    public function destroy($id): JsonResponse
+    {
+        $gallery = Gallery::findOrFail($id);
+        $gallery->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Album galeri berhasil dihapus.'
+        ]);
+    }
+
+    private function uploadGalleryImage($file, string $galleryId): string
+    {
+        $supabaseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket = config('services.supabase.buckets.gallery');
+
+        if (!$supabaseUrl || !$serviceRoleKey || !$bucket) {
+            abort(500, 'Konfigurasi Supabase Storage untuk galeri belum lengkap.');
+        }
+
+        $extension = $file->getClientOriginalExtension() ?: $file->extension();
+        $path = 'galleries/' . $galleryId . '/' . now()->timestamp . '-' . Str::random(12) . '.' . $extension;
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$path}";
+
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$serviceRoleKey}",
+            'apikey' => $serviceRoleKey,
+            'Content-Type' => $file->getMimeType(),
+            'x-upsert' => 'true',
+        ])->withBody(
+            file_get_contents($file->getRealPath()),
+            $file->getMimeType()
+        )->post($uploadUrl);
+
+        if ($response->failed()) {
+            abort(500, 'Gagal mengunggah foto galeri ke Supabase Storage.');
+        }
+
+        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
     }
 }

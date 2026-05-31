@@ -42,4 +42,14 @@ class RondaSchedule extends Model
     {
         return $this->hasMany(RondaAttendance::class, 'schedule_id', 'schedule_id');
     }
+
+    public function checkpointLogs()
+    {
+        return $this->hasMany(PatrolCheckpointLog::class, 'schedule_id', 'schedule_id');
+    }
+
+    public function rondaLog()
+    {
+        return $this->hasOne(RondaLog::class, 'schedule_id', 'schedule_id');
+    }
 }

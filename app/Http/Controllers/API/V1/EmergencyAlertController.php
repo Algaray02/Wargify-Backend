@@ -16,7 +16,10 @@ class EmergencyAlertController extends Controller
     public function index(): JsonResponse
     {
         // Mengambil semua alert darurat diurutkan dari yang paling terbaru
-        $alerts = EmergencyAlert::with('sender:user_id,full_name,phone_number')->latest()->get();
+        $alerts = EmergencyAlert::with('sender:user_id,full_name,phone_number')
+            ->orderByRaw("case when status = 'ACTIVE' then 0 else 1 end")
+            ->latest()
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -49,7 +52,7 @@ class EmergencyAlertController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Sinyal darurat SOS berhasil dikirim! Bantuan akan segera menuju lokasi Anda.',
-            'data'    => $alert
+            'data'    => $alert->load('sender:user_id,full_name,phone_number')
         ], 201);
     }
 
@@ -59,7 +62,7 @@ class EmergencyAlertController extends Controller
      */
     public function resolve($id): JsonResponse
     {
-        $alert = EmergencyAlert::findOrFail($id);
+        $alert = EmergencyAlert::with('sender:user_id,full_name,phone_number')->findOrFail($id);
 
         if ($alert->status === 'RESOLVED') {
             return response()->json([
@@ -76,7 +79,7 @@ class EmergencyAlertController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Peringatan darurat berhasil dinonaktifkan. Keadaan dinyatakan aman.',
-            'data'    => $alert
+            'data'    => $alert->fresh('sender:user_id,full_name,phone_number')
         ]);
     }
 }
