@@ -4,8 +4,10 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Family;
+use App\Models\Household;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class FamilyController extends Controller
 {
@@ -30,12 +32,20 @@ class FamilyController extends Controller
         ]);
 
         try {
+            $shouldGenerateQr = !isset($validated['qr_code_data']);
+            $validated['qr_code_data'] ??= $this->makeFamilyQrData($validated['household_id']);
             $family = Family::create($validated);
+
+            if ($shouldGenerateQr) {
+                $family->update([
+                    'qr_code_data' => $this->makeFamilyQrData($family->household_id, $family->family_id),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Keluarga berhasil ditambahkan',
-                'data' => $family
+                'data' => $family->fresh(['household', 'members'])
             ], 201);
         } catch (\Throwable $e) {
             return response()->json([
@@ -48,7 +58,7 @@ class FamilyController extends Controller
 
     public function show($id)
     {
-        $family = Family::with('household', 'members')->find($id);
+        $family = Family::with(['household', 'members'])->find($id);
 
         if (!$family) {
             return response()->json([
@@ -70,6 +80,14 @@ class FamilyController extends Controller
             'head_of_family_id' => 'nullable|exists:users,user_id',
             'qr_code_data' => 'sometimes|required|string|unique:families,qr_code_data,' . $family->family_id . ',family_id',
         ]);
+
+        if (
+            isset($validated['household_id'])
+            && $validated['household_id'] !== $family->household_id
+            && !isset($validated['qr_code_data'])
+        ) {
+            $validated['qr_code_data'] = $this->makeFamilyQrData($validated['household_id'], $family->family_id);
+        }
 
         $family->update($validated);
 
@@ -150,5 +168,15 @@ class FamilyController extends Controller
             'success' => true,
             'message' => 'Data keluarga berhasil dihapus'
         ]);
+    }
+
+    private function makeFamilyQrData(string $householdId, ?string $familyId = null): string
+    {
+        $household = Household::findOrFail($householdId);
+        $cleanBlock = Str::upper(Str::slug($household->block_number));
+        $cleanHouse = Str::upper(Str::slug($household->house_number));
+        $suffix = $familyId ? Str::upper(Str::substr($familyId, 0, 8)) : Str::upper(Str::random(8));
+
+        return "QR-FAM-{$cleanBlock}-{$cleanHouse}-{$suffix}";
     }
 }

@@ -56,4 +56,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Family::class, 'family_id', 'family_id');
     }
+
+    public function citizenGroups()
+    {
+        return $this->belongsToMany(CitizenGroup::class, 'user_group_members', 'user_id', 'group_id')
+            ->withPivot('id')
+            ->withTimestamps();
+    }
+
+    public function invitedActivities()
+    {
+        return $this->belongsToMany(Activity::class, 'activity_target_users', 'user_id', 'activity_id')
+            ->withPivot('id')
+            ->withTimestamps();
+    }
+
 }

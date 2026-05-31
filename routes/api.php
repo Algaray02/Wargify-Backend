@@ -9,6 +9,7 @@ use App\Http\Controllers\API\V1\IuranController;
 use App\Http\Controllers\API\V1\TreasuryController;
 use App\Http\Controllers\API\V1\ActivityController;
 use App\Http\Controllers\API\V1\AnnouncementController;
+use App\Http\Controllers\API\V1\CitizenGroupController;
 use App\Http\Controllers\API\V1\FacilityReportController;
 use App\Http\Controllers\API\V1\EmergencyAlertController;
 use App\Http\Controllers\API\V1\GalleryController;
@@ -45,14 +46,15 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 2. MODUL WARGA (USERS)
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::apiResource('users', UserController::class);
+            Route::apiResource('citizen-groups', CitizenGroupController::class);
         });
 
         // =====================================================
         // 3. MODUL KEPALA KELUARGA & RUMAH
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::apiResource('households', HouseholdController::class);
             Route::apiResource('families', FamilyController::class);
             Route::post('/families/{id}/members', [FamilyController::class, 'addMember']);
@@ -63,9 +65,11 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 4. MODUL KEUANGAN - IURAN
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT,BENDAHARA')->group(function () {
             Route::post('/iuran-periods', [IuranController::class, 'storePeriod']);
             Route::get('/iuran-periods', [IuranController::class, 'indexPeriod']);
+            Route::patch('/iuran-periods/{id}', [IuranController::class, 'updatePeriod']);
+            Route::delete('/iuran-periods/{id}', [IuranController::class, 'destroyPeriod']);
             Route::get('/iuran-periods/{id}/payments', [IuranController::class, 'periodPayments']);
             Route::post('/iuran-payments', [IuranController::class, 'storePayment']);
             Route::patch('/iuran-payments/{id}', [IuranController::class, 'updatePayment']);
@@ -76,7 +80,7 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 5. MODUL KEUANGAN - CATATAN KAS
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT,BENDAHARA')->group(function () {
             Route::get('/treasury-logs', [TreasuryController::class, 'index']);
             Route::post('/treasury-logs', [TreasuryController::class, 'store']);
             Route::patch('/treasury-logs/{id}', [TreasuryController::class, 'update']);
@@ -87,11 +91,16 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 6. MODUL RONDA
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::get('/ronda/groups', [RondaController::class, 'groups']);
             Route::post('/ronda/groups', [RondaController::class, 'storeGroup']);
+            Route::patch('/ronda/groups/{id}', [RondaController::class, 'updateGroup']);
             Route::post('/ronda/groups/{id}/members', [RondaController::class, 'addGroupMember']);
             Route::post('/ronda/schedules', [RondaController::class, 'storeSchedule']);
+            Route::patch('/ronda/schedules/{id}', [RondaController::class, 'updateSchedule']);
+            Route::post('/ronda/schedules/{id}/checkpoint-logs', [RondaController::class, 'storeCheckpointLog']);
+            Route::post('/ronda/schedules/{id}/logs', [RondaController::class, 'storeRondaLog']);
+            Route::get('/ronda/checkpoints', [RondaController::class, 'checkpoints']);
             Route::post('/ronda/checkpoints', [RondaController::class, 'storeCheckpoint']);
         });
         Route::get('/ronda/schedules', [RondaController::class, 'index']);      // Akses Umum
@@ -100,18 +109,22 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 7. MODUL KEGIATAN
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::get('/activities', [ActivityController::class, 'index']);
+        Route::get('/activities/{id}', [ActivityController::class, 'show']);
+        Route::post('/activities/{id}/attendance', [ActivityController::class, 'attendance']);
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::post('/activities', [ActivityController::class, 'store']);
+            Route::patch('/activities/{id}', [ActivityController::class, 'update']);
+            Route::delete('/activities/{id}', [ActivityController::class, 'destroy']);
             Route::post('/activities/{id}/announce', [ActivityController::class, 'announce']);
             Route::post('/activities/{id}/complete', [ActivityController::class, 'complete']);
-            Route::post('/activities/{id}/attendance', [ActivityController::class, 'attendance']);
             Route::get('/activities/{id}/participants', [ActivityController::class, 'participants']);
         });
 
         // =====================================================
         // 8. MODUL PENGUMUMAN
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::post('/announcements', [AnnouncementController::class, 'store']);
             Route::post('/announcements/{id}/publish', [AnnouncementController::class, 'publish']);
         });
@@ -120,7 +133,7 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 9. MODUL FASILITAS / LAPORAN WARGA
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::get('/facility-reports', [FacilityReportController::class, 'index']);
             Route::patch('/facility-reports/{id}/status', [FacilityReportController::class, 'updateStatus']);
             Route::patch('/facility-reports/{id}/response', [FacilityReportController::class, 'respond']);
@@ -130,7 +143,7 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 10. MODUL SOS (KEADAAN DARURAT)
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::post('/emergency-alerts/{id}/resolve', [EmergencyAlertController::class, 'resolve']);
         });
         Route::post('/emergency-alerts', [EmergencyAlertController::class, 'trigger']); // Akses Warga
@@ -139,8 +152,11 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         // 11. MODUL GALLERY / DOKUMENTASI
         // =====================================================
-        Route::middleware('role:')->group(function () {
+        Route::get('/galleries', [GalleryController::class, 'index']); // Akses Umum
+        Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::post('/galleries', [GalleryController::class, 'store']);
+            Route::patch('/galleries/{id}', [GalleryController::class, 'update']);
+            Route::delete('/galleries/{id}', [GalleryController::class, 'destroy']);
             Route::post('/galleries/{id}/images', [GalleryController::class, 'uploadImages']);
             Route::delete('/gallery-images/{id}', [GalleryController::class, 'destroyImage']);
         });

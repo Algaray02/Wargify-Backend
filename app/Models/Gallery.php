@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Gallery extends Model
@@ -21,5 +22,10 @@ class Gallery extends Model
     public function images(): HasMany
     {
         return $this->hasMany(GalleryImage::class, 'gallery_id', 'gallery_id');
+    }
+
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(Activity::class, 'activity_id', 'activity_id');
     }
 }

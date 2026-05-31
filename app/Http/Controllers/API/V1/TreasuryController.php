@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\TreasuryLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class TreasuryController extends Controller
 {
@@ -40,11 +42,16 @@ class TreasuryController extends Controller
             'source'      => 'required|string|max:255',
             'amount'      => 'required|numeric|min:0',
             'description' => 'required|string',
-            'receipt_url' => 'nullable|string', // Opsional, bisa diisi path string atau url berkas
+            'receipt_file' => 'nullable|image|max:8192',
         ]);
 
         // Otomatis mengambil ID user yang sedang login (Bendahara) sebagai pencatat
         $validated['recorded_by'] = $request->user()->user_id;
+        unset($validated['receipt_file']);
+
+        if ($request->hasFile('receipt_file')) {
+            $validated['receipt_url'] = $this->uploadReceipt($request);
+        }
 
         $log = TreasuryLog::create($validated);
 
@@ -64,11 +71,18 @@ class TreasuryController extends Controller
         $log = TreasuryLog::findOrFail($id);
 
         $validated = $request->validate([
+            'type'        => 'sometimes|required|in:INCOME,EXPENSE',
             'source'      => 'sometimes|required|string|max:255',
             'amount'      => 'sometimes|required|numeric|min:0',
             'description' => 'sometimes|required|string',
-            'receipt_url' => 'nullable|string',
+            'receipt_file' => 'nullable|image|max:8192',
         ]);
+
+        unset($validated['receipt_file']);
+
+        if ($request->hasFile('receipt_file')) {
+            $validated['receipt_url'] = $this->uploadReceipt($request);
+        }
 
         $log->update($validated);
 
@@ -113,5 +127,37 @@ class TreasuryController extends Controller
                 'current_balance' => (float) $currentBalance,
             ]
         ]);
+    }
+
+    private function uploadReceipt(Request $request): string
+    {
+        $file = $request->file('receipt_file');
+        $supabaseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket = config('services.supabase.buckets.treasury');
+
+        if (!$supabaseUrl || !$serviceRoleKey || !$bucket) {
+            abort(500, 'Konfigurasi Supabase Storage untuk bukti kas belum lengkap.');
+        }
+
+        $extension = $file->getClientOriginalExtension() ?: $file->extension();
+        $path = 'receipts/' . now()->format('Y/m') . '/' . Str::uuid() . '.' . $extension;
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$path}";
+
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$serviceRoleKey}",
+            'apikey' => $serviceRoleKey,
+            'Content-Type' => $file->getMimeType(),
+            'x-upsert' => 'true',
+        ])->withBody(
+            file_get_contents($file->getRealPath()),
+            $file->getMimeType()
+        )->post($uploadUrl);
+
+        if ($response->failed()) {
+            abort(500, 'Gagal mengunggah bukti kas ke Supabase Storage.');
+        }
+
+        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
     }
 }

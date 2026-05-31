@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\FacilityReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FacilityReportController extends Controller
 {
@@ -35,12 +37,18 @@ class FacilityReportController extends Controller
             'title'       => 'required|string|max:255',
             'category'    => 'required|string|max:100',
             'description' => 'required|string',
-            'image_url'   => 'nullable|string', // Berupa path string foto kerusakan dari storage
+            'image_url'   => 'nullable|string',
+            'image_file'  => 'nullable|image|max:8192',
         ]);
 
         // Status awal otomatis di-set SUBMITTED sesuai arahan spesifikasi bisnis logismu
         $validated['status'] = 'SUBMITTED';
         $validated['reporter_id'] = $request->user()->user_id;
+        unset($validated['image_file']);
+
+        if ($request->hasFile('image_file')) {
+            $validated['image_url'] = $this->uploadReportPhoto($request, 'image_file', 'reports');
+        }
 
         $report = FacilityReport::create($validated);
 
@@ -82,8 +90,14 @@ class FacilityReportController extends Controller
 
         $validated = $request->validate([
             'response_message'   => 'required|string',
-            'resolved_photo_url' => 'nullable|string', // Opsional bukti foto kalau pengerjaan sudah kelar
+            'resolved_photo_url' => 'nullable|string',
+            'resolved_photo_file' => 'nullable|image|max:8192',
         ]);
+        unset($validated['resolved_photo_file']);
+
+        if ($request->hasFile('resolved_photo_file')) {
+            $validated['resolved_photo_url'] = $this->uploadReportPhoto($request, 'resolved_photo_file', 'resolved');
+        }
 
         // Jika RT mengirim respons balasan, idealnya status juga ikut disesuaikan menjadi teratasi
         $report->update([
@@ -97,5 +111,37 @@ class FacilityReportController extends Controller
             'message' => 'Tanggapan perbaikan berhasil dikirim ke pelapor.',
             'data'    => $report
         ]);
+    }
+
+    private function uploadReportPhoto(Request $request, string $field, string $directory): string
+    {
+        $file = $request->file($field);
+        $supabaseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket = config('services.supabase.buckets.report');
+
+        if (!$supabaseUrl || !$serviceRoleKey || !$bucket) {
+            abort(500, 'Konfigurasi Supabase Storage untuk laporan fasilitas belum lengkap.');
+        }
+
+        $extension = $file->getClientOriginalExtension() ?: $file->extension();
+        $path = $directory . '/' . now()->format('Y/m') . '/' . Str::uuid() . '.' . $extension;
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$path}";
+
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$serviceRoleKey}",
+            'apikey' => $serviceRoleKey,
+            'Content-Type' => $file->getMimeType(),
+            'x-upsert' => 'true',
+        ])->withBody(
+            file_get_contents($file->getRealPath()),
+            $file->getMimeType()
+        )->post($uploadUrl);
+
+        if ($response->failed()) {
+            abort(500, 'Gagal mengunggah foto laporan fasilitas ke Supabase Storage.');
+        }
+
+        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
     }
 }

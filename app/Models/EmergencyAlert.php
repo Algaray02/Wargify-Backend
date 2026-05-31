@@ -25,6 +25,12 @@ class EmergencyAlert extends Model
         'resolved_at',
     ];
 
+    protected $casts = [
+        'latitude' => 'float',
+        'longitude' => 'float',
+        'resolved_at' => 'datetime',
+    ];
+
     /**
      * Relasi ke warga yang menekan tombol SOS panic button.
      */

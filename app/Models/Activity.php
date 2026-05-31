@@ -23,6 +23,7 @@ class Activity extends Model
         'description',
         'activity_date',
         'location_name',
+        'household_id',
         'attendance_qr_code',
         'status', // 'DRAFT', 'ANNOUNCED', 'COMPLETED'
         'created_by',
@@ -36,6 +37,11 @@ class Activity extends Model
         return $this->belongsTo(User::class, 'created_by', 'user_id');
     }
 
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class, 'household_id', 'household_id');
+    }
+
     /**
      * Relasi ke warga yang hadir di acara ini (Many-to-Many via Pivot).
      */
@@ -44,5 +50,19 @@ class Activity extends Model
         return $this->belongsToMany(User::class, 'activity_participants', 'activity_id', 'user_id')
                     ->withPivot('participant_id', 'attended_at')
                     ->withTimestamps();
+    }
+
+    public function targetGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(CitizenGroup::class, 'activity_target_groups', 'activity_id', 'group_id')
+            ->withPivot('id')
+            ->withTimestamps();
+    }
+
+    public function invitedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'activity_target_users', 'activity_id', 'user_id')
+            ->withPivot('id')
+            ->withTimestamps();
     }
 }

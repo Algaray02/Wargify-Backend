@@ -73,13 +73,38 @@ class HouseholdController extends Controller
             'house_number' => 'sometimes|required|string|max:10',
         ]);
 
+        if (isset($validated['block_number']) || isset($validated['house_number'])) {
+            $block = $validated['block_number'] ?? $household->block_number;
+            $house = $validated['house_number'] ?? $household->house_number;
+            $validated['qr_code_data'] = 'QR-HOUSE-' . Str::upper(Str::slug($block)) . '-' . Str::upper(Str::slug($house));
+        }
+
         $household->update($validated);
+
+        if (isset($validated['qr_code_data'])) {
+            $freshHousehold = $household->fresh();
+
+            $freshHousehold->families()->get()->each(function ($family) use ($freshHousehold) {
+                $family->update([
+                    'qr_code_data' => $this->makeFamilyQrData($freshHousehold, $family->family_id),
+                ]);
+            });
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Data rumah berhasil diperbarui.',
-            'data'    => $household
+            'data'    => $household->fresh('families.members')
         ]);
+    }
+
+    private function makeFamilyQrData(Household $household, string $familyId): string
+    {
+        $cleanBlock = Str::upper(Str::slug($household->block_number));
+        $cleanHouse = Str::upper(Str::slug($household->house_number));
+        $familySuffix = Str::upper(Str::substr($familyId, 0, 8));
+
+        return "QR-FAM-{$cleanBlock}-{$cleanHouse}-{$familySuffix}";
     }
 
     /**

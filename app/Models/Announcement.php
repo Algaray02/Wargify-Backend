@@ -22,6 +22,7 @@ class Announcement extends Model
         'banner_url',
         'status', // 'DRAFT', 'PUBLISHED'
         'created_by',
+        'activity_id',
     ];
 
     /**
@@ -31,4 +32,10 @@ class Announcement extends Model
     {
         return $this->belongsTo(User::class, 'created_by', 'user_id');
     }
+
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(Activity::class, 'activity_id', 'activity_id');
+    }
+
 }

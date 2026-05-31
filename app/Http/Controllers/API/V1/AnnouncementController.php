@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,18 +14,22 @@ class AnnouncementController extends Controller
      * Mengambil daftar pengumuman yang sudah terbit untuk beranda warga.
      * GET /api/v1/announcements
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        // Warga hanya bisa melihat pengumuman yang berstatus PUBLISHED
-        $announcements = Announcement::with('creator:user_id,full_name')
-            ->where('status', 'PUBLISHED')
-            ->latest()
-            ->get();
+        $query = Announcement::with([
+                'creator:user_id,full_name',
+                'activity:activity_id,title,type,activity_date',
+            ])
+            ->latest();
+
+        if ($request->user()?->role === 'WARGA') {
+            $query->where('status', 'PUBLISHED');
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar pengumuman berhasil diambil.',
-            'data'    => $announcements
+            'data'    => $query->get()
         ]);
     }
 
@@ -62,13 +67,15 @@ class AnnouncementController extends Controller
         $announcement = Announcement::findOrFail($id);
 
         $announcement->update(['status' => 'PUBLISHED']);
+        $notification = app(FirebaseCloudMessagingService::class)->notifyAnnouncement($announcement);
 
         // NOTE: Di sini tempat memicu Push Notification FCM ke aplikasi mobile seluruh warga
 
         return response()->json([
             'success' => true,
-            'message' => 'Pengumuman resmi diterbitkan dan disiarkan ke warga.',
-            'data'    => $announcement
+            'message' => 'Pengumuman resmi diterbitkan dan disiarkan ke seluruh pengguna.',
+            'data'    => $announcement,
+            'notification' => $notification,
         ]);
     }
 }

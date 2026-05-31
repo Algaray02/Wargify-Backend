@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Announcement;
 use App\Models\IuranPeriod;
 use App\Models\IuranPayment;
 use App\Models\Family;
+use App\Models\TreasuryLog;
+use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -49,6 +52,14 @@ class IuranController extends Controller
         $validated['payment_qr_code'] = 'QR-PAY-' . Str::upper(Str::slug($validated['period_name']));
 
         $period = IuranPeriod::create($validated);
+        $announcement = Announcement::create([
+            'title' => 'Iuran baru: ' . $period->period_name,
+            'content' => 'Periode iuran ' . $period->period_name . ' telah dibuka. Nominal per KK Rp ' . number_format((float) $period->amount_per_family, 0, ',', '.') . '.',
+            'banner_url' => null,
+            'status' => 'PUBLISHED',
+            'created_by' => $request->user()->user_id,
+        ]);
+        app(FirebaseCloudMessagingService::class)->notifyAnnouncement($announcement);
 
         return response()->json([
             'success' => true,
@@ -57,20 +68,99 @@ class IuranController extends Controller
         ], 201);
     }
 
+    public function updatePeriod(Request $request, $id): JsonResponse
+    {
+        $period = IuranPeriod::findOrFail($id);
+        $oldTreasuryDescription = $this->iuranSummaryDescription($period);
+
+        $validated = $request->validate([
+            'period_name'       => 'sometimes|required|string|max:255',
+            'month'             => 'sometimes|required|integer|between:1,12',
+            'year'              => 'sometimes|required|integer|min:2026',
+            'amount_per_family' => 'sometimes|required|numeric|min:0',
+        ]);
+
+        if (isset($validated['period_name'])) {
+            $validated['payment_qr_code'] = 'QR-PAY-' . Str::upper(Str::slug($validated['period_name']));
+        }
+
+        $period->update($validated);
+        $period->refresh();
+
+        if ($oldTreasuryDescription !== $this->iuranSummaryDescription($period)) {
+            TreasuryLog::where('source', 'IURAN_WARGA')
+                ->where('description', $oldTreasuryDescription)
+                ->delete();
+        }
+
+        $this->syncPeriodTreasuryLog($period, $request->user()->user_id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Periode iuran berhasil diperbarui.',
+            'data' => $period->fresh(),
+        ]);
+    }
+
+    public function destroyPeriod($id): JsonResponse
+    {
+        $period = IuranPeriod::findOrFail($id);
+
+        IuranPayment::where('period_id', $period->period_id)->get()->each(function (IuranPayment $payment) {
+            $this->deleteLegacyPaymentTreasuryLog($payment->payment_id);
+            $payment->delete();
+        });
+        $this->deletePeriodTreasuryLog($period);
+
+        $period->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Periode iuran berhasil dihapus.',
+        ]);
+    }
+
     /**
      * Melihat rekap status seluruh tagihan keluarga pada bulan tersebut.
      * GET /api/v1/iuran-periods/{id}/payments
      */
     public function periodPayments($id): JsonResponse
     {
-        $payments = IuranPayment::where('period_id', $id)
-            ->with(['family.headOfFamily', 'payer'])
-            ->get();
+        $period = IuranPeriod::findOrFail($id);
+        $paymentsByFamily = IuranPayment::where('period_id', $id)
+            ->with(['family.headOfFamily', 'family.household', 'payer'])
+            ->get()
+            ->keyBy('family_id');
+
+        $payments = Family::with(['headOfFamily', 'household', 'members'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(function (Family $family) use ($paymentsByFamily, $period) {
+                $payment = $paymentsByFamily->get($family->family_id);
+
+                return [
+                    'payment_id' => $payment?->payment_id,
+                    'period_id' => $period->period_id,
+                    'family_id' => $family->family_id,
+                    'family' => $family,
+                    'payer' => $payment?->payer,
+                    'paid_by_user_id' => $payment?->paid_by_user_id,
+                    'amount_paid' => (float) ($payment?->amount_paid ?? 0),
+                    'paid_at' => $payment?->paid_at,
+                    'is_paid' => $payment && (float) $payment->amount_paid > 0,
+                    'payment_qr_code' => $period->payment_qr_code . '-FAM-' . Str::upper(Str::substr($family->family_id, 0, 8)),
+                    'created_at' => $payment?->created_at,
+                    'updated_at' => $payment?->updated_at,
+                ];
+            });
 
         return response()->json([
             'success' => true,
             'message' => 'Rekap pembayaran periode ini berhasil diambil.',
-            'data'    => $payments
+            'data'    => [
+                'period' => $period,
+                'payments' => $payments,
+            ]
         ]);
     }
 
@@ -102,11 +192,14 @@ class IuranController extends Controller
             'amount_paid'     => $validated['amount_paid'],
             'paid_at'         => now(),
         ])->save();
+        $payment->load(['period', 'family.headOfFamily', 'payer']);
+
+        $this->syncPeriodTreasuryLog($payment->period, $request->user()->user_id);
 
         return response()->json([
             'success' => true,
             'message' => 'Catatan pembayaran berhasil diperbarui.',
-            'data'    => $payment->load(['period', 'family.headOfFamily', 'payer'])
+            'data'    => $payment
         ]);
     }
 
@@ -124,6 +217,9 @@ class IuranController extends Controller
         }
 
         $payment->update($validated);
+        $payment->load(['period', 'family.headOfFamily', 'payer']);
+
+        $this->syncPeriodTreasuryLog($payment->period, $request->user()->user_id);
 
         return response()->json([
             'success' => true,
@@ -135,7 +231,10 @@ class IuranController extends Controller
     public function destroyPayment($id): JsonResponse
     {
         $payment = IuranPayment::findOrFail($id);
+        $period = $payment->period;
+        $this->deleteLegacyPaymentTreasuryLog($payment->payment_id);
         $payment->delete();
+        $this->syncPeriodTreasuryLog($period, request()->user()->user_id);
 
         return response()->json([
             'success' => true,
@@ -168,5 +267,73 @@ class IuranController extends Controller
             'message' => 'Riwayat iuran keluarga Anda berhasil diambil.',
             'data'    => $myPayments
         ]);
+    }
+
+    private function syncPeriodTreasuryLog(IuranPeriod $period, string $recordedBy): void
+    {
+        $payments = IuranPayment::where('period_id', $period->period_id)
+            ->where('amount_paid', '>', 0)
+            ->get(['payment_id', 'amount_paid']);
+
+        $payments->each(fn (IuranPayment $payment) => $this->deleteLegacyPaymentTreasuryLog($payment->payment_id));
+
+        $description = $this->iuranSummaryDescription($period);
+        $totalPaid = (float) $payments->sum('amount_paid');
+
+        if ($totalPaid <= 0) {
+            TreasuryLog::where('source', 'IURAN_WARGA')
+                ->where('description', $description)
+                ->delete();
+            return;
+        }
+
+        TreasuryLog::updateOrCreate(
+            [
+                'source' => 'IURAN_WARGA',
+                'description' => $description,
+            ],
+            [
+                'type' => 'INCOME',
+                'amount' => $totalPaid,
+                'receipt_url' => null,
+                'recorded_by' => $recordedBy,
+            ]
+        );
+    }
+
+    private function deletePeriodTreasuryLog(IuranPeriod $period): void
+    {
+        TreasuryLog::where('source', 'IURAN_WARGA')
+            ->where('description', $this->iuranSummaryDescription($period))
+            ->delete();
+    }
+
+    private function deleteLegacyPaymentTreasuryLog(string $paymentId): void
+    {
+        TreasuryLog::where('source', 'IURAN_WARGA')
+            ->where('description', 'like', "AUTO-IURAN Payment ID: {$paymentId}%")
+            ->delete();
+    }
+
+    private function iuranSummaryDescription(IuranPeriod $period): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
+        $month = $months[(int) $period->month] ?? $period->period_name;
+
+        return "Rekap pembayaran iuran warga bulan {$month} {$period->year}";
     }
 }
