@@ -1,108 +1,166 @@
 import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ArrowLeft, Image as ImageIcon, PenLine, Megaphone } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, Image as ImageIcon, Megaphone, PenLine, Send, Users } from 'lucide-react';
+import { useCreateAnnouncement, usePublishAnnouncement } from '@/hooks/useAnnouncements';
+
+const defaultForm = {
+    title: '',
+    content: '',
+    banner_url: '',
+};
 
 export default function TambahPengumumanPage() {
     const [imagePreview, setImagePreview] = useState(null);
+    const [form, setForm] = useState(defaultForm);
+    const [shouldPublish, setShouldPublish] = useState(true);
+    const createAnnouncement = useCreateAnnouncement();
+    const publishAnnouncement = usePublishAnnouncement();
+
+    const updateForm = (field, value) => {
+        setForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        const announcement = await createAnnouncement.mutateAsync({
+            ...form,
+            banner_url: form.banner_url || null,
+        });
+
+        if (shouldPublish) {
+            await publishAnnouncement.mutateAsync(announcement.announcement_id);
+        }
+
+        router.visit('/pengumuman');
+    };
+
+    const isSubmitting = createAnnouncement.isPending || publishAnnouncement.isPending;
 
     return (
         <DashboardLayout>
             <Head title="Buat Pengumuman Baru - Wargify" />
-            
-            <div className="p-8 max-w-4xl">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <Link href="/pengumuman" className="hover:bg-gray-100 p-2 rounded-full transition-colors shrink-0">
-                        <ArrowLeft className="w-6 h-6 text-gray-900" strokeWidth={2.5} />
+
+            <div className="space-y-6 p-8">
+                <div className="flex items-start gap-3">
+                    <Link href="/pengumuman" className="shrink-0 rounded-full p-2 transition-colors hover:bg-gray-100">
+                        <ArrowLeft className="size-5 text-gray-900" strokeWidth={2.5} />
                     </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                        Daftar Pengumuman <span className="text-[#00468B]">+</span>
-                    </h1>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Tambah Pengumuman</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500">
+                            Pengumuman diterbitkan untuk seluruh pengguna aplikasi.
+                        </p>
+                    </div>
                 </div>
 
-                <div className="ml-12 max-w-2xl space-y-6">
-                    {/* Image Upload/Placeholder Box */}
-                    <div className="relative w-64 h-48 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 group overflow-hidden shadow-inner">
-                        {imagePreview ? (
-                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center">
-                                <ImageIcon className="w-16 h-16 opacity-30 text-gray-500 group-hover:scale-105 transition-transform" strokeWidth={1.5} />
+                <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1fr_360px]">
+                    <Card className="rounded-lg">
+                        <CardHeader>
+                            <CardTitle>Isi pengumuman</CardTitle>
+                            <CardDescription>Konten ini akan dikirim dan ditampilkan untuk seluruh pengguna.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            <div className="grid gap-2">
+                                <Label htmlFor="title">Judul</Label>
+                                <Input
+                                    id="title"
+                                    placeholder="Contoh: Jadwal Rapat Warga Bulan Juni"
+                                    value={form.title}
+                                    onChange={(event) => updateForm('title', event.target.value)}
+                                    required
+                                />
                             </div>
-                        )}
-                        
-                        {/* Edit Icon Button in Top Right */}
-                        <label className="absolute top-3 right-3 bg-white hover:bg-gray-50 text-[#00468B] p-2 rounded-xl shadow-md border border-gray-100 cursor-pointer hover:scale-110 active:scale-95 transition-all">
-                            <PenLine className="w-4 h-4" />
-                            <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                        setImagePreview(URL.createObjectURL(file));
-                                    }
-                                }}
-                            />
-                        </label>
-                    </div>
 
-                    {/* Judul Field */}
-                    <div className="space-y-2">
-                        <Label htmlFor="judul" className="text-sm font-semibold text-gray-800">Judul</Label>
-                        <Input 
-                            id="judul" 
-                            placeholder="Masukkan Judul" 
-                            className="border-gray-300 focus-visible:ring-[#00468B] h-11 rounded-xl bg-white shadow-sm"
-                        />
-                    </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="content">Isi</Label>
+                                <Textarea
+                                    id="content"
+                                    placeholder="Tulis informasi pengumuman"
+                                    rows={8}
+                                    className="resize-none"
+                                    value={form.content}
+                                    onChange={(event) => updateForm('content', event.target.value)}
+                                    required
+                                />
+                            </div>
 
-                    {/* Isi Field */}
-                    <div className="space-y-2">
-                        <Label htmlFor="isi" className="text-sm font-semibold text-gray-800">Isi</Label>
-                        <Textarea 
-                            id="isi" 
-                            placeholder="Masukkan Isi" 
-                            rows={6}
-                            className="border-gray-300 focus-visible:ring-[#00468B] rounded-xl bg-white shadow-sm"
-                        />
-                    </div>
+                            <div className="grid gap-2">
+                                <Label>Banner</Label>
+                                <div className="relative h-52 max-w-md overflow-hidden rounded-lg border bg-slate-50">
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Preview banner" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className="grid h-full place-items-center text-slate-400">
+                                            <div className="text-center">
+                                                <ImageIcon className="mx-auto size-12" strokeWidth={1.5} />
+                                                <p className="mt-2 text-xs font-semibold uppercase tracking-wide">No image</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <label className="absolute right-3 top-3 cursor-pointer rounded-lg border bg-white p-2 text-[#00468B] shadow-sm transition hover:bg-slate-50">
+                                        <PenLine className="size-4" />
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={(event) => {
+                                                const file = event.target.files?.[0];
+                                                if (!file) return;
+                                                setImagePreview(URL.createObjectURL(file));
+                                                updateForm('banner_url', `/storage/announcements/${file.name}`);
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
 
-                    {/* Prioritas Field */}
-                    <div className="space-y-2 max-w-xs">
-                        <Label htmlFor="prioritas" className="text-sm font-semibold text-gray-800">Prioritas</Label>
-                        <Select defaultValue="penting">
-                            <SelectTrigger className="border-gray-300 focus:ring-[#00468B] h-11 rounded-xl bg-white shadow-sm">
-                                <SelectValue placeholder="Pilih Prioritas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="penting">Penting</SelectItem>
-                                <SelectItem value="biasa">Biasa</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                            <div className="flex items-center justify-between rounded-lg border bg-slate-50 p-4">
+                                <div>
+                                    <Label htmlFor="publish" className="font-semibold">Terbitkan langsung</Label>
+                                    <p className="mt-1 text-xs text-slate-500">Jika mati, pengumuman disimpan sebagai draft.</p>
+                                </div>
+                                <Switch id="publish" checked={shouldPublish} onCheckedChange={setShouldPublish} />
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Submit Button */}
-                    <div className="flex justify-end pt-4">
-                        <Button className="bg-[#00468B] hover:bg-[#003366] text-white px-6 py-2.5 rounded-xl shadow-md flex items-center gap-2">
-                            <Megaphone className="w-4 h-4" />
-                            Simpan & Umumkan
-                        </Button>
+                    <div className="space-y-4">
+                        <Card className="rounded-lg">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Users className="size-4" />
+                                    Penerima
+                                </CardTitle>
+                                <CardDescription>Tidak ada pemilihan khusus untuk pengumuman.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="rounded-lg border bg-slate-50 p-4">
+                                    <p className="text-sm font-semibold text-slate-900">Seluruh pengguna</p>
+                                    <p className="mt-1 text-sm text-slate-600">
+                                        FCM dan daftar pengumuman akan dikirim ke semua pengguna yang memiliki token aktif.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div className="flex justify-end gap-3">
+                            <Link href="/pengumuman">
+                                <Button type="button" variant="outline">Batal</Button>
+                            </Link>
+                            <Button type="submit" className="bg-[#00468B] text-white hover:bg-[#003366]" disabled={isSubmitting}>
+                                {shouldPublish ? <Send className="size-4" /> : <Megaphone className="size-4" />}
+                                {shouldPublish ? 'Simpan & Terbitkan' : 'Simpan draft'}
+                            </Button>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
         </DashboardLayout>
     );
