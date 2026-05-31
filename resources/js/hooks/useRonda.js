@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/error-message';
 export const rondaKeys = {
     schedules: ['ronda', 'schedules'],
     groups: ['ronda', 'groups'],
+    checkpoints: ['ronda', 'checkpoints'],
 };
 
 export const useRondaSchedules = () => {
@@ -22,6 +23,13 @@ export const useRondaGroups = () => {
     });
 };
 
+export const useRondaCheckpoints = () => {
+    return useQuery({
+        queryKey: rondaKeys.checkpoints,
+        queryFn: rondaService.getCheckpoints,
+    });
+};
+
 export const useCreateRondaGroup = () => {
     const queryClient = useQueryClient();
 
@@ -33,6 +41,97 @@ export const useCreateRondaGroup = () => {
         },
         onError: (error) => {
             toast.error(getErrorMessage(error, 'Gagal menambah kelompok ronda.'));
+        },
+    });
+};
+
+export const useUpdateRondaGroup = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ groupId, payload }) => rondaService.updateGroup(groupId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.groups });
+            queryClient.invalidateQueries({ queryKey: rondaKeys.schedules });
+            toast.success('Kelompok ronda berhasil diperbarui.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memperbarui kelompok ronda.'));
+        },
+    });
+};
+
+export const useCreateRondaSchedule = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: rondaService.createSchedule,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.schedules });
+            toast.success('Jadwal ronda berhasil ditambahkan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menambah jadwal ronda.'));
+        },
+    });
+};
+
+export const useUpdateRondaSchedule = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ scheduleId, payload }) => rondaService.updateSchedule(scheduleId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.schedules });
+            toast.success('Jadwal ronda berhasil diperbarui.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memperbarui jadwal ronda.'));
+        },
+    });
+};
+
+export const useCreateRondaCheckpoint = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: rondaService.createCheckpoint,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.checkpoints });
+            toast.success('Checkpoint ronda berhasil ditambahkan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menambah checkpoint ronda.'));
+        },
+    });
+};
+
+export const useCreatePatrolCheckpointLog = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ scheduleId, payload }) => rondaService.createCheckpointLog(scheduleId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.schedules });
+            toast.success('Scan checkpoint berhasil dicatat.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal mencatat scan checkpoint.'));
+        },
+    });
+};
+
+export const useCreateRondaLog = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ scheduleId, payload }) => rondaService.createRondaLog(scheduleId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rondaKeys.schedules });
+            toast.success('Log rute ronda berhasil disimpan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menyimpan log rute ronda.'));
         },
     });
 };

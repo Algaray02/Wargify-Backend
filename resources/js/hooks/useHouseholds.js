@@ -46,6 +46,7 @@ export const useUpdateHousehold = () => {
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: householdKeys.all });
             queryClient.invalidateQueries({ queryKey: householdKeys.detail(variables.householdId) });
+            queryClient.invalidateQueries({ queryKey: ['families'] });
             toast.success('Data rumah berhasil disimpan.');
         },
         onError: (error) => {

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     ArrowUpRight,
     BadgeDollarSign,
@@ -22,15 +23,46 @@ import { useHouseholds } from '@/hooks/useHouseholds';
 import { useRondaSchedules } from '@/hooks/useRonda';
 import { useTreasurySummary } from '@/hooks/useTreasury';
 import { useUsers } from '@/hooks/useUsers';
+import { useActivities } from '@/hooks/useActivities';
+import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { useEmergencyAlerts } from '@/hooks/useEmergencies';
+import { useFacilityReports } from '@/hooks/useFacilityReports';
 
 export default function DashboardPage() {
-    const { data: users = [] } = useUsers();
-    const { data: families = [] } = useFamilies();
-    const { data: households = [] } = useHouseholds();
-    const { data: schedules = [] } = useRondaSchedules();
-    const { data: treasurySummary } = useTreasurySummary();
+    const usersQuery = useUsers();
+    const familiesQuery = useFamilies();
+    const householdsQuery = useHouseholds();
+    const schedulesQuery = useRondaSchedules();
+    const treasurySummaryQuery = useTreasurySummary();
+    const activitiesQuery = useActivities();
+    const announcementsQuery = useAnnouncements();
+    const alertsQuery = useEmergencyAlerts();
+    const reportsQuery = useFacilityReports();
+
+    const users = usersQuery.data ?? [];
+    const families = familiesQuery.data ?? [];
+    const households = householdsQuery.data ?? [];
+    const schedules = schedulesQuery.data ?? [];
+    const treasurySummary = treasurySummaryQuery.data;
+    const activitiesData = activitiesQuery.data ?? [];
+    const announcements = announcementsQuery.data ?? [];
+    const alerts = alertsQuery.data ?? [];
+    const reports = reportsQuery.data ?? [];
+    const isDashboardLoading = [
+        usersQuery,
+        familiesQuery,
+        householdsQuery,
+        schedulesQuery,
+        treasurySummaryQuery,
+        activitiesQuery,
+        announcementsQuery,
+        alertsQuery,
+        reportsQuery,
+    ].some((query) => query.isLoading);
     const activeRonda = schedules.filter((schedule) => schedule.status === 'ONGOING').length;
     const scheduledRonda = schedules.filter((schedule) => schedule.status === 'SCHEDULED').length;
+    const unresolvedReports = reports.filter((report) => report.status !== 'RESOLVED').length;
+    const activeAlerts = alerts.filter((alert) => alert.status === 'ACTIVE').length;
     const formatCurrency = (value) => new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -46,15 +78,24 @@ export default function DashboardPage() {
 
     const operations = [
         { label: 'Total pemasukan kas', value: formatCurrency(treasurySummary?.total_income), progress: 100, icon: Target },
-        { label: 'Pertemuan terjadwal', value: '4 agenda', progress: 64, icon: CalendarDays },
+        { label: 'Pertemuan terjadwal', value: `${activitiesData.length} agenda`, progress: activitiesData.length ? 100 : 0, icon: CalendarDays },
         { label: 'Jadwal ronda aktif', value: `${activeRonda} aktif, ${scheduledRonda} mendatang`, progress: schedules.length ? Math.round((activeRonda / schedules.length) * 100) : 0, icon: MoonStar },
     ];
 
     const activities = [
-        { title: 'Laporan fasilitas baru', meta: 'Jalan berlubang ditandai belum ditangani', status: 'Prioritas' },
-        { title: 'Ronda malam berjalan', meta: 'Kelompok 2 sudah melewati checkpoint utama', status: 'Live' },
-        { title: 'Pengumuman siap terbit', meta: 'Kerja bakti akhir pekan menunggu publikasi', status: 'Draft' },
+        { title: 'Laporan fasilitas aktif', meta: `${unresolvedReports} laporan menunggu tindak lanjut`, status: unresolvedReports ? 'Prioritas' : 'Aman' },
+        { title: 'SOS aktif', meta: `${activeAlerts} sinyal darurat sedang aktif`, status: activeAlerts ? 'Live' : 'Aman' },
+        { title: 'Pengumuman tersedia', meta: `${announcements.length} pengumuman tercatat`, status: 'Info' },
     ];
+
+    if (isDashboardLoading) {
+        return (
+            <DashboardLayout>
+                <Head title="Dashboard - Wargify" />
+                <DashboardSkeleton />
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout>
@@ -169,5 +210,65 @@ export default function DashboardPage() {
                 </section>
             </div>
         </DashboardLayout>
+    );
+}
+
+function DashboardSkeleton() {
+    return (
+        <div className="space-y-8 p-6 md:p-8">
+            <section className="overflow-hidden rounded-[2rem] border border-[#00468B]/10 bg-white/80 shadow-xl shadow-slate-900/5">
+                <div className="grid gap-8 p-6 md:grid-cols-[1.2fr_.8fr] md:p-8">
+                    <div className="space-y-4">
+                        <Skeleton className="h-12 w-3/4 bg-slate-200" />
+                        <Skeleton className="h-5 w-2/3 bg-slate-200" />
+                        <Skeleton className="h-5 w-1/2 bg-slate-200" />
+                    </div>
+                    <div className="hidden space-y-4 md:block">
+                        <Skeleton className="h-24 rounded-2xl bg-slate-200" />
+                        <Skeleton className="h-4 rounded-full bg-slate-200" />
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index} className="border-white/70 bg-white/80 p-0">
+                        <CardContent className="p-5">
+                            <div className="flex items-start justify-between">
+                                <Skeleton className="size-12 rounded-2xl bg-slate-200" />
+                                <Skeleton className="h-6 w-20 rounded-full bg-slate-200" />
+                            </div>
+                            <div className="mt-6 space-y-3">
+                                <Skeleton className="h-4 w-28 bg-slate-200" />
+                                <Skeleton className="h-9 w-32 bg-slate-200" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
+                {Array.from({ length: 2 }).map((_, index) => (
+                    <Card key={index} className="border-white/70 bg-white/82">
+                        <CardHeader>
+                            <Skeleton className="h-6 w-48 bg-slate-200" />
+                        </CardHeader>
+                        <CardContent className="space-y-4 px-5 pb-5">
+                            {Array.from({ length: 3 }).map((__, itemIndex) => (
+                                <div key={itemIndex} className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                                    <div className="flex items-center gap-3">
+                                        <Skeleton className="size-10 rounded-xl bg-slate-200" />
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="h-4 w-3/4 bg-slate-200" />
+                                            <Skeleton className="h-3 w-1/2 bg-slate-200" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                ))}
+            </section>
+        </div>
     );
 }

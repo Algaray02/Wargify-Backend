@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
   BadgeDollarSign,
@@ -15,6 +15,7 @@ import {
   RadioTower,
   Search,
   ShieldAlert,
+  Siren,
   UsersRound,
 } from 'lucide-react';
 import {
@@ -43,7 +44,17 @@ import { authService } from '@/services/authService';
 import { toast } from 'sonner';
 
 export default function DashboardLayout({ children }) {
-    const { url } = usePage();
+    const { props, url } = usePage();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const authUser = props.auth?.user ?? (() => {
+        try {
+            return JSON.parse(localStorage.getItem('auth_user') || 'null');
+        } catch {
+            return null;
+        }
+    })();
 
     const handleLogout = async () => {
         try {
@@ -53,6 +64,7 @@ export default function DashboardLayout({ children }) {
             toast.error(error?.response?.data?.message || 'Logout gagal. Sesi lokal tetap dibersihkan.');
         } finally {
             localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
             router.visit('/login');
         }
     };
@@ -66,6 +78,7 @@ export default function DashboardLayout({ children }) {
             subItems: [
                 { name: 'Per Kepala', path: '/warga/per-kepala' },
                 { name: 'Per Warga', path: '/warga/per-warga' },
+                { name: 'Kelompok Warga', path: '/warga/kelompok' },
             ]
         },
         { name: 'Gallery', path: '/gallery', icon: GalleryHorizontalEnd },
@@ -95,7 +108,71 @@ export default function DashboardLayout({ children }) {
         { name: 'SoS Log', path: '/sos-log', icon: ShieldAlert },
     ];
 
+    const searchItems = useMemo(() => {
+        return navItems.flatMap((item) => {
+            const parent = {
+                name: item.name,
+                path: item.path,
+                icon: item.icon,
+                keywords: [item.name, item.path],
+            };
+
+            const children = item.subItems?.map((subItem) => ({
+                name: subItem.name,
+                path: subItem.path,
+                icon: item.icon,
+                keywords: [item.name, subItem.name, subItem.path],
+            })) ?? [];
+
+            return [parent, ...children];
+        });
+    }, []);
+
+    const filteredSearchItems = useMemo(() => {
+        const keyword = searchQuery.trim().toLowerCase();
+
+        if (!keyword) {
+            return searchItems.slice(0, 6);
+        }
+
+        return searchItems
+            .filter((item) => item.keywords.some((value) => value.toLowerCase().includes(keyword)))
+            .slice(0, 8);
+    }, [searchItems, searchQuery]);
+
+    const notifications = [
+        {
+            id: 'sos-1',
+            title: 'SOS baru dari warga',
+            description: 'Pak Joko mengirim sinyal darurat di area Blok A.',
+            time: '2 menit lalu',
+            icon: Siren,
+            tone: 'text-[#AD1114] bg-red-50',
+        },
+        {
+            id: 'report-1',
+            title: 'Laporan fasilitas masuk',
+            description: 'Lampu jalan depan rumah A-4 perlu ditindaklanjuti.',
+            time: '18 menit lalu',
+            icon: Building2,
+            tone: 'text-[#00468B] bg-[#E6F6FF]',
+        },
+        {
+            id: 'activity-1',
+            title: 'Kegiatan siap diumumkan',
+            description: 'Rapat Anggaran RT Mei 2026 menunggu publikasi.',
+            time: '1 jam lalu',
+            icon: CalendarDays,
+            tone: 'text-[#2A6B2C] bg-green-50',
+        },
+    ];
+
     const currentItem = navItems.find((item) => url === item.path || url.startsWith(item.path + '/')) ?? navItems[0];
+    const goToSearchItem = (item) => {
+        setSearchQuery('');
+        setIsSearchOpen(false);
+        router.visit(item.path);
+    };
 
     return (
         <SidebarProvider>
@@ -107,7 +184,7 @@ export default function DashboardLayout({ children }) {
                         </div>
                         <div>
                             <span className="block text-xl font-black tracking-tight">Wargify</span>
-                            <span className="text-xs font-medium text-cyan-50/70">Command center RT</span>
+                            <span className="text-xs font-medium text-cyan-50/70">{authUser?.full_name ?? 'Admin sistem'}</span>
                         </div>
                     </div>
                 </SidebarHeader>
@@ -226,18 +303,112 @@ export default function DashboardLayout({ children }) {
                     </div>
                   </div>
                   <div className="hidden items-center gap-3 md:flex">
-                    <div className="flex h-10 w-72 items-center gap-2 rounded-full border border-[#d4e4ef] bg-[#E6F6FF] px-4 text-sm text-slate-500 shadow-sm">
-                        <Search className="size-4" />
-                        <span>Cari modul, warga, atau laporan</span>
+                    <div className="relative">
+                        <div className="flex h-10 w-80 items-center gap-2 rounded-full border border-[#d4e4ef] bg-[#E6F6FF] px-4 text-sm text-slate-500 shadow-sm focus-within:border-[#00468B] focus-within:bg-white">
+                            <Search className="size-4 shrink-0" />
+                            <input
+                                value={searchQuery}
+                                onChange={(event) => {
+                                    setSearchQuery(event.target.value);
+                                    setIsSearchOpen(true);
+                                }}
+                                onFocus={() => setIsSearchOpen(true)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' && filteredSearchItems[0]) {
+                                        goToSearchItem(filteredSearchItems[0]);
+                                    }
+                                    if (event.key === 'Escape') {
+                                        setIsSearchOpen(false);
+                                    }
+                                }}
+                                placeholder="Cari modul, warga, atau laporan"
+                                className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-500"
+                            />
+                        </div>
+
+                        {isSearchOpen && (
+                            <div
+                                className="absolute right-0 top-12 z-50 w-96 overflow-hidden rounded-2xl border border-[#d4e4ef] bg-white shadow-2xl shadow-slate-900/12"
+                                onMouseDown={(event) => event.preventDefault()}
+                            >
+                                <div className="border-b border-slate-100 px-4 py-3">
+                                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Hasil pencarian</p>
+                                </div>
+                                <div className="max-h-80 overflow-y-auto p-2">
+                                    {filteredSearchItems.length === 0 ? (
+                                        <div className="px-3 py-6 text-center text-sm font-medium text-slate-500">
+                                            Modul tidak ditemukan.
+                                        </div>
+                                    ) : (
+                                        filteredSearchItems.map((item) => {
+                                            const Icon = item.icon;
+                                            return (
+                                                <button
+                                                    key={item.path}
+                                                    type="button"
+                                                    onClick={() => goToSearchItem(item)}
+                                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#E6F6FF]"
+                                                >
+                                                    <span className="grid size-9 place-items-center rounded-xl bg-[#E6F6FF] text-[#00468B]">
+                                                        <Icon className="size-4" />
+                                                    </span>
+                                                    <span className="min-w-0">
+                                                        <span className="block text-sm font-black text-slate-900">{item.name}</span>
+                                                        <span className="block truncate text-xs font-medium text-slate-500">{item.path}</span>
+                                                    </span>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <button className="grid size-10 place-items-center rounded-full border border-[#d4e4ef] bg-white text-slate-600 shadow-sm transition hover:text-[#00468B]">
-                        <Bell className="size-4" />
-                    </button>
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setIsNotificationOpen((value) => !value)}
+                            className="relative grid size-10 place-items-center rounded-full border border-[#d4e4ef] bg-white text-slate-600 shadow-sm transition hover:text-[#00468B]"
+                            aria-label="Buka notifikasi"
+                        >
+                            <Bell className="size-4" />
+                            <span className="absolute right-2 top-2 size-2 rounded-full bg-[#AD1114]" />
+                        </button>
+
+                        {isNotificationOpen && (
+                            <div className="absolute right-0 top-12 z-50 w-96 overflow-hidden rounded-2xl border border-[#d4e4ef] bg-white shadow-2xl shadow-slate-900/12">
+                                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">Notifikasi</p>
+                                        <p className="text-xs font-medium text-slate-500">Dummy preview untuk dashboard</p>
+                                    </div>
+                                    <span className="rounded-full bg-[#E6F6FF] px-2 py-1 text-xs font-black text-[#00468B]">{notifications.length}</span>
+                                </div>
+                                <div className="space-y-1 p-2">
+                                    {notifications.map((notification) => {
+                                        const Icon = notification.icon;
+                                        return (
+                                            <div key={notification.id} className="flex gap-3 rounded-xl p-3 transition hover:bg-slate-50">
+                                                <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${notification.tone}`}>
+                                                    <Icon className="size-4" />
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-black text-slate-900">{notification.title}</p>
+                                                    <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{notification.description}</p>
+                                                    <p className="mt-2 text-xs font-bold text-slate-400">{notification.time}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex h-10 items-center gap-2 rounded-full border border-[#d4e4ef] bg-white pl-2 pr-4 shadow-sm">
                         <div className="grid size-7 place-items-center rounded-full bg-[#00468B] text-white">
                             <CircleUser className="size-4" />
                         </div>
-                        <span className="text-sm font-bold text-slate-700">Superadmin</span>
+                        <span className="text-sm font-bold text-slate-700">{authUser?.full_name ?? 'Admin sistem'}</span>
                     </div>
                   </div>
                 </header>

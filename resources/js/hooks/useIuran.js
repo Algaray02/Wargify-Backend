@@ -38,6 +38,39 @@ export const useCreateIuranPeriod = () => {
     });
 };
 
+export const useUpdateIuranPeriod = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ periodId, payload }) => iuranService.updatePeriod(periodId, payload),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: iuranKeys.periods });
+            if (variables?.periodId) {
+                queryClient.invalidateQueries({ queryKey: iuranKeys.payments(variables.periodId) });
+            }
+            toast.success('Periode iuran berhasil diperbarui.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memperbarui periode iuran.'));
+        },
+    });
+};
+
+export const useDeleteIuranPeriod = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ periodId }) => iuranService.deletePeriod(periodId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: iuranKeys.periods });
+            toast.success('Periode iuran berhasil dihapus.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menghapus periode iuran.'));
+        },
+    });
+};
+
 export const useCreateIuranPayment = () => {
     const queryClient = useQueryClient();
 
@@ -52,6 +85,42 @@ export const useCreateIuranPayment = () => {
         },
         onError: (error) => {
             toast.error(getErrorMessage(error, 'Gagal mencatat pembayaran iuran.'));
+        },
+    });
+};
+
+export const useUpdateIuranPayment = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ paymentId, payload, periodId }) => iuranService.updatePayment(paymentId, payload, periodId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: iuranKeys.periods });
+            if (variables?.periodId) {
+                queryClient.invalidateQueries({ queryKey: iuranKeys.payments(variables.periodId) });
+            }
+            toast.success('Pembayaran iuran berhasil diperbarui.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memperbarui pembayaran iuran.'));
+        },
+    });
+};
+
+export const useDeleteIuranPayment = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ paymentId }) => iuranService.deletePayment(paymentId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: iuranKeys.periods });
+            if (variables?.periodId) {
+                queryClient.invalidateQueries({ queryKey: iuranKeys.payments(variables.periodId) });
+            }
+            toast.success('Pembayaran iuran berhasil dibatalkan.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal membatalkan pembayaran iuran.'));
         },
     });
 };

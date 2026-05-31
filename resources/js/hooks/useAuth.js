@@ -13,14 +13,17 @@ export const useAuth = () => {
         onSuccess: (data) => {
             const userRole = data?.data?.user?.role;
             
-            if (userRole !== 'SUPERADMIN') {
-                toast.error('Akses ditolak. Hanya Superadmin yang dapat login.');
+            if (!['SUPERADMIN', 'KETUA_RT'].includes(userRole)) {
+                toast.error('Akses ditolak. Dashboard web hanya untuk Superadmin dan Ketua RT.');
                 return;
             }
 
             const token = data?.token || data?.data?.token;
             if (token) {
                 localStorage.setItem('auth_token', token);
+            }
+            if (data?.data?.user) {
+                localStorage.setItem('auth_user', JSON.stringify(data.data.user));
             }
             toast.success('Login berhasil.');
             router.visit('/');

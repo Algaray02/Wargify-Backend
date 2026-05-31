@@ -36,3 +36,33 @@ export const useCreateTreasuryLog = () => {
         },
     });
 };
+
+export const useUpdateTreasuryLog = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ logId, payload }) => treasuryService.updateLog(logId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['treasury'] });
+            toast.success('Catatan kas berhasil diperbarui.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memperbarui catatan kas.'));
+        },
+    });
+};
+
+export const useDeleteTreasuryLog = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ logId }) => treasuryService.deleteLog(logId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['treasury'] });
+            toast.success('Catatan kas berhasil dihapus.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal menghapus catatan kas.'));
+        },
+    });
+};

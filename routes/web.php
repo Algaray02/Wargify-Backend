@@ -25,6 +25,7 @@ Route::middleware(EnsureSanctumPageAuthenticated::class)->group(function () {
     Route::inertia('/warga/per-warga', 'warga/per-warga/page');
     Route::inertia('/warga/per-warga/create', 'warga/per-warga/create/page');
     Route::inertia('/warga/per-warga/edit', 'warga/per-warga/edit/page');
+    Route::inertia('/warga/kelompok', 'warga/kelompok/page');
 
     // Gallery
     Route::inertia('/gallery', 'gallery/page');
