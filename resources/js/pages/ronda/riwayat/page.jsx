@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -12,28 +12,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
+import DataPagination from '@/components/common/DataPagination';
+import { usePagination } from '@/hooks/usePagination';
 import { useRondaSchedules } from '@/hooks/useRonda';
 
 export default function RiwayatRondaPage() {
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('semua_status');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const { data: schedules = [], isLoading, isError } = useRondaSchedules();
 
     const formatDate = (value) => value
@@ -48,35 +40,51 @@ export default function RiwayatRondaPage() {
         COMPLETED: 'Selesai',
         MISSED: 'Terlewat',
         ONGOING: 'Berlangsung',
-        SCHEDULED: 'Mendatang',
+        SCHEDULED: 'Terjadwal',
     };
+    const statusOptions = [
+        { value: 'ALL', label: 'Semua status' },
+        { value: 'COMPLETED', label: 'Selesai' },
+        { value: 'ONGOING', label: 'Berlangsung' },
+        { value: 'SCHEDULED', label: 'Terjadwal' },
+        { value: 'MISSED', label: 'Terlewat' },
+    ];
 
     const riwayatData = useMemo(() => {
         return schedules
             .map((schedule) => {
                 const memberCount = schedule.group?.members?.length ?? 0;
-                const completed = schedule.status === 'COMPLETED';
+                const attended = schedule.attendances?.length ?? 0;
+                const scanned = schedule.checkpoint_logs?.length ?? schedule.checkpointLogs?.length ?? 0;
+                const assigned = schedule.checkpoints?.length ?? 0;
+                const log = schedule.ronda_log ?? schedule.rondaLog;
+                const duration = Number(log?.duration ?? 0);
+                const distance = Number(log?.distance_covered ?? 0);
 
                 return {
                     id: schedule.schedule_id,
                     tanggal: formatDate(schedule.schedule_date),
-                    kehadiran: completed ? `${memberCount}/${memberCount}` : `0/${memberCount}`,
-                    checkpoint: schedule.checkpoints?.length ? `${schedule.checkpoints.length}/${schedule.checkpoints.length}` : '-',
+                    kehadiran: `${attended}/${memberCount}`,
+                    checkpoint: `${scanned}/${assigned}`,
                     kelompok: schedule.group?.name ?? '-',
                     waktu: `${formatTime(schedule.shift_start)}-${formatTime(schedule.shift_end)}`,
                     status: statusLabels[schedule.status] ?? schedule.status,
+                    statusRaw: schedule.status,
+                    jarak: `${distance.toFixed(2)} km`,
+                    durasi: duration ? `${duration} menit` : '-',
                 };
             })
             .filter((riwayat) => {
                 const keyword = search.toLowerCase();
-                const matchesSearch = [riwayat.tanggal, riwayat.kelompok, riwayat.status]
+                const matchesSearch = [riwayat.tanggal, riwayat.kelompok, riwayat.status, riwayat.jarak, riwayat.durasi, riwayat.checkpoint]
                     .some((value) => String(value).toLowerCase().includes(keyword));
-                const matchesStatus = statusFilter === 'semua_status'
-                    || riwayat.status.toLowerCase() === statusFilter;
+                const matchesStatus = statusFilter === 'ALL' || riwayat.statusRaw === statusFilter;
 
                 return matchesSearch && matchesStatus;
             });
     }, [schedules, search, statusFilter]);
+
+    const pagination = usePagination(riwayatData, 10);
 
     return (
         <DashboardLayout>
@@ -90,21 +98,24 @@ export default function RiwayatRondaPage() {
                     </p>
                 </div>
                 
-                <div className="mb-6 flex items-center gap-4 max-w-2xl">
-                    <Input 
-                        placeholder="Cari pelaksanaan..." 
-                        className="bg-white flex-1"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                    />
+                <div className="mb-6 grid gap-3 lg:grid-cols-[1fr_190px]">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                            placeholder="Cari tanggal, kelompok, status, checkpoint, jarak, atau durasi"
+                            className="bg-white pl-9"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                        />
+                    </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[160px] bg-white">
-                            <SelectValue placeholder="Semua Status" />
+                        <SelectTrigger className="bg-white">
+                            {statusOptions.find((option) => option.value === statusFilter)?.label ?? 'Semua status'}
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="semua_status">Semua Status</SelectItem>
-                            <SelectItem value="selesai">Selesai</SelectItem>
-                            <SelectItem value="terlewat">Terlewat</SelectItem>
+                            {statusOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -116,6 +127,8 @@ export default function RiwayatRondaPage() {
                                 <TableHead className="font-semibold text-muted-foreground">Tanggal</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Kehadiran</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Checkpoint</TableHead>
+                                <TableHead className="font-semibold text-muted-foreground">Jarak</TableHead>
+                                <TableHead className="font-semibold text-muted-foreground">Durasi</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Kelompok</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Waktu</TableHead>
                                 <TableHead className="font-semibold text-muted-foreground">Status</TableHead>
@@ -125,24 +138,26 @@ export default function RiwayatRondaPage() {
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Memuat riwayat ronda...</TableCell>
+                                    <TableCell colSpan={9} className="py-8 text-center text-slate-500">Memuat riwayat ronda...</TableCell>
                                 </TableRow>
                             )}
                             {isError && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-red-600">Gagal memuat riwayat ronda.</TableCell>
+                                    <TableCell colSpan={9} className="py-8 text-center text-red-600">Gagal memuat riwayat ronda.</TableCell>
                                 </TableRow>
                             )}
                             {!isLoading && !isError && riwayatData.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Tidak ada riwayat ronda.</TableCell>
+                                    <TableCell colSpan={9} className="py-8 text-center text-slate-500">Tidak ada riwayat ronda.</TableCell>
                                 </TableRow>
                             )}
-                            {riwayatData.map((riwayat) => (
+                            {pagination.paginatedItems.map((riwayat) => (
                                 <TableRow key={riwayat.id}>
                                     <TableCell className="font-medium">{riwayat.tanggal}</TableCell>
                                     <TableCell>{riwayat.kehadiran}</TableCell>
                                     <TableCell>{riwayat.checkpoint}</TableCell>
+                                    <TableCell>{riwayat.jarak}</TableCell>
+                                    <TableCell>{riwayat.durasi}</TableCell>
                                     <TableCell>{riwayat.kelompok}</TableCell>
                                     <TableCell>{riwayat.waktu}</TableCell>
                                     <TableCell>
@@ -151,7 +166,7 @@ export default function RiwayatRondaPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <Link href="/ronda/riwayat/detail">
+                                                <Link href={`/ronda/riwayat/detail?id=${riwayat.id}`}>
                                             <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
                                                 <Eye className="w-4 h-4 mr-2" />
                                                 Lihat
@@ -164,34 +179,14 @@ export default function RiwayatRondaPage() {
                     </Table>
                 </div>
 
-                {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                        Menampilkan {riwayatData.length} dari {schedules.length} baris
-                    </div>
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious href="#" className="pointer-events-none opacity-50" />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#" isActive className="bg-[#00468B] text-white hover:bg-[#003366] hover:text-white">1</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">2</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">3</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationNext href="#" />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
+                <DataPagination
+                    from={pagination.from}
+                    onPageChange={pagination.setPage}
+                    page={pagination.page}
+                    to={pagination.to}
+                    totalItems={pagination.totalItems}
+                    totalPages={pagination.totalPages}
+                />
             </div>
         </DashboardLayout>
     );

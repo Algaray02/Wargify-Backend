@@ -3,7 +3,8 @@ import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SquarePen, MonitorPlay, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,199 +14,233 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import DataPagination from '@/components/common/DataPagination';
+import { usePagination } from '@/hooks/usePagination';
 import { useRondaSchedules } from '@/hooks/useRonda';
+import { CalendarClock, CheckCircle2, MonitorPlay, Plus, Search, Shield, SquarePen, Users } from 'lucide-react';
+
+const statusOptions = [
+    { value: 'ALL', label: 'Semua status' },
+    { value: 'SCHEDULED', label: 'Terjadwal' },
+    { value: 'ONGOING', label: 'Berlangsung' },
+    { value: 'COMPLETED', label: 'Selesai' },
+    { value: 'MISSED', label: 'Terlewat' },
+];
+
+const statusMeta = {
+    SCHEDULED: { label: 'Terjadwal', className: 'border-blue-200 bg-blue-50 text-blue-700' },
+    ONGOING: { label: 'Berlangsung', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    COMPLETED: { label: 'Selesai', className: 'border-slate-200 bg-slate-50 text-slate-700' },
+    MISSED: { label: 'Terlewat', className: 'border-red-200 bg-red-50 text-red-700' },
+};
+
+const formatDate = (value) => value
+    ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
+    : '-';
+
+const formatTime = (value) => value
+    ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+    : '-';
+
+function StatusBadge({ status }) {
+    const meta = statusMeta[status] ?? { label: status, className: '' };
+    return <Badge variant="outline" className={meta.className}>{meta.label}</Badge>;
+}
 
 export default function JadwalRondaPage() {
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('semua_status');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const { data: schedules = [], isLoading, isError } = useRondaSchedules();
 
-    const formatDate = (value) => value
-        ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
-        : '-';
+    const filteredSchedules = useMemo(() => {
+        const keyword = search.trim().toLowerCase();
 
-    const formatTime = (value) => value
-        ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
-        : '-';
+        return schedules.filter((schedule) => {
+            const attendanceCount = schedule.attendances?.length ?? 0;
+            const checkpointCount = schedule.checkpoints?.length ?? 0;
+            const memberCount = schedule.group?.members?.length ?? 0;
+            const matchesStatus = statusFilter === 'ALL' || schedule.status === statusFilter;
+            const matchesSearch = [
+                formatDate(schedule.schedule_date),
+                schedule.group?.name,
+                schedule.coordinator?.full_name,
+                statusMeta[schedule.status]?.label,
+                `${attendanceCount}/${memberCount}`,
+                `${checkpointCount} checkpoint`,
+            ].some((value) => String(value ?? '').toLowerCase().includes(keyword));
 
-    const statusLabels = {
-        SCHEDULED: 'Mendatang',
-        ONGOING: 'Berlangsung',
-        COMPLETED: 'Selesai',
-        MISSED: 'Terlewat',
-    };
-
-    const jadwalData = useMemo(() => {
-        return schedules
-            .map((schedule) => ({
-                id: schedule.schedule_id,
-                tanggal: formatDate(schedule.schedule_date),
-                jumlahAnggota: schedule.group?.members?.length ?? 0,
-                totalCheckpoint: schedule.checkpoints?.length ?? '-',
-                waktu: `${formatTime(schedule.shift_start)}-${formatTime(schedule.shift_end)}`,
-                status: statusLabels[schedule.status] ?? schedule.status,
-                statusRaw: schedule.status,
-                kelompok: schedule.group?.name ?? '-',
-            }))
-            .filter((jadwal) => {
-                const keyword = search.toLowerCase();
-                const matchesSearch = [jadwal.tanggal, jadwal.kelompok, jadwal.status]
-                    .some((value) => String(value).toLowerCase().includes(keyword));
-                const matchesStatus = statusFilter === 'semua_status'
-                    || jadwal.status.toLowerCase() === statusFilter;
-
-                return matchesSearch && matchesStatus;
-            });
+            return matchesStatus && matchesSearch;
+        });
     }, [schedules, search, statusFilter]);
+
+    const pagination = usePagination(filteredSchedules, 10);
+    const activeCount = schedules.filter((schedule) => schedule.status === 'ONGOING').length;
+    const completedCount = schedules.filter((schedule) => schedule.status === 'COMPLETED').length;
 
     return (
         <DashboardLayout>
             <Head title="Jadwal Ronda - Wargify" />
-            
-            <div className="p-8">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Jadwal Ronda</h1>
-                    <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
-                        Atur jadwal ronda, anggota, checkpoint, dan status pelaksanaan.
-                    </p>
-                </div>
-                
-                <div className="mb-6 flex justify-between items-center gap-4">
-                    <div className="flex flex-1 gap-4 max-w-2xl">
-                        <Input 
-                            placeholder="Cari jadwal..." 
-                            className="bg-white flex-1"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                        />
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[160px] bg-white">
-                                <SelectValue placeholder="Semua Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="semua_status">Semua Status</SelectItem>
-                                <SelectItem value="berlangsung">Berlangsung</SelectItem>
-                                <SelectItem value="mendatang">Mendatang</SelectItem>
-                                <SelectItem value="selesai">Selesai</SelectItem>
-                            </SelectContent>
-                        </Select>
+
+            <div className="space-y-6 p-8">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Jadwal Ronda</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500">
+                            Atur jadwal ronda, lihat anggota bertugas, checkpoint, presensi, dan status pelaksanaan.
+                        </p>
                     </div>
-                    
                     <Link href="/ronda/jadwal/create">
-                        <Button className="bg-[#00468B] hover:bg-[#003366] text-white">
-                            <Plus className="w-4 h-4 mr-2" />
+                        <Button className="bg-[#00468B] text-white hover:bg-[#003366]">
+                            <Plus className="size-4" />
                             Tambah Jadwal
                         </Button>
                     </Link>
                 </div>
 
-                <div className="rounded-md border overflow-hidden bg-white">
+                <div className="grid gap-3 md:grid-cols-4">
+                    <Card className="rounded-lg">
+                        <CardContent className="flex items-center gap-3">
+                            <CalendarClock className="size-9 rounded-lg bg-blue-50 p-2 text-blue-700" />
+                            <div>
+                                <p className="text-xs font-medium text-slate-500">Total jadwal</p>
+                                <p className="text-2xl font-semibold text-slate-900">{schedules.length}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-lg">
+                        <CardContent className="flex items-center gap-3">
+                            <Shield className="size-9 rounded-lg bg-emerald-50 p-2 text-emerald-700" />
+                            <div>
+                                <p className="text-xs font-medium text-slate-500">Berlangsung</p>
+                                <p className="text-2xl font-semibold text-slate-900">{activeCount}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-lg">
+                        <CardContent className="flex items-center gap-3">
+                            <CheckCircle2 className="size-9 rounded-lg bg-slate-100 p-2 text-slate-700" />
+                            <div>
+                                <p className="text-xs font-medium text-slate-500">Selesai</p>
+                                <p className="text-2xl font-semibold text-slate-900">{completedCount}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-lg">
+                        <CardContent className="flex items-center gap-3">
+                            <Users className="size-9 rounded-lg bg-amber-50 p-2 text-amber-700" />
+                            <div>
+                                <p className="text-xs font-medium text-slate-500">Hasil filter</p>
+                                <p className="text-2xl font-semibold text-slate-900">{filteredSchedules.length}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="rounded-lg border bg-white p-4">
+                    <div className="grid gap-3 lg:grid-cols-[1fr_190px]">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                placeholder="Cari tanggal, kelompok, koordinator, status, presensi, atau checkpoint"
+                                className="pl-9"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger>
+                                <SelectValue>{statusOptions.find((option) => option.value === statusFilter)?.label ?? 'Semua status'}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border bg-white">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="font-semibold text-muted-foreground">Tanggal</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Jumlah Anggota</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Total Checkpoint</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Waktu</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground">Status</TableHead>
-                                <TableHead className="font-semibold text-muted-foreground w-48">Aksi</TableHead>
+                                <TableHead>Jadwal</TableHead>
+                                <TableHead>Kelompok</TableHead>
+                                <TableHead>Koordinator</TableHead>
+                                <TableHead>Presensi</TableHead>
+                                <TableHead>Checkpoint</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="w-44">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Memuat jadwal ronda...</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Memuat jadwal ronda...</TableCell>
                                 </TableRow>
                             )}
                             {isError && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-red-600">Gagal memuat jadwal ronda.</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-red-600">Gagal memuat jadwal ronda.</TableCell>
                                 </TableRow>
                             )}
-                            {!isLoading && !isError && jadwalData.length === 0 && (
+                            {!isLoading && !isError && filteredSchedules.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Tidak ada jadwal ronda.</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Tidak ada jadwal ronda.</TableCell>
                                 </TableRow>
                             )}
-                            {jadwalData.map((jadwal) => (
-                                <TableRow key={jadwal.id}>
-                                    <TableCell className="font-medium">{jadwal.tanggal}</TableCell>
-                                    <TableCell>{jadwal.jumlahAnggota}</TableCell>
-                                    <TableCell>{jadwal.totalCheckpoint}</TableCell>
-                                    <TableCell>{jadwal.waktu}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={jadwal.status === 'Berlangsung' ? 'default' : 'secondary'} className={jadwal.status === 'Berlangsung' ? 'bg-green-600 hover:bg-green-700' : ''}>
-                                            {jadwal.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Link href="/ronda/jadwal/edit">
-                                                <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
-                                                    <SquarePen className="w-4 h-4 mr-2" />
-                                                    Kelola
-                                                </Button>
-                                            </Link>
-                                            {jadwal.status === 'Berlangsung' && (
-                                                <Link href="/ronda/monitoring">
-                                                    <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
-                                                        <MonitorPlay className="w-4 h-4 mr-2" />
-                                                        Monitor
+                            {pagination.paginatedItems.map((schedule) => {
+                                const memberCount = schedule.group?.members?.length ?? 0;
+                                const attendanceCount = schedule.attendances?.length ?? 0;
+
+                                return (
+                                    <TableRow key={schedule.schedule_id}>
+                                        <TableCell>
+                                            <div>
+                                                <p className="font-semibold text-slate-900">{formatDate(schedule.schedule_date)}</p>
+                                                <p className="text-xs text-slate-500">{formatTime(schedule.shift_start)} - {formatTime(schedule.shift_end)}</p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{schedule.group?.name ?? '-'}</TableCell>
+                                        <TableCell>{schedule.coordinator?.full_name ?? '-'}</TableCell>
+                                        <TableCell>{attendanceCount}/{memberCount} hadir</TableCell>
+                                        <TableCell>{schedule.checkpoints?.length ?? 0} titik</TableCell>
+                                        <TableCell><StatusBadge status={schedule.status} /></TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Link href={`/ronda/jadwal/edit?id=${schedule.schedule_id}`}>
+                                                    <Button size="icon" variant="outline" className="size-9" title="Kelola jadwal">
+                                                        <SquarePen className="size-4" />
                                                     </Button>
                                                 </Link>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                                <Link href={`/ronda/monitoring?id=${schedule.schedule_id}`}>
+                                                    <Button size="icon" className="size-9 bg-[#00468B] text-white hover:bg-[#003366]" title="Monitoring">
+                                                        <MonitorPlay className="size-4" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </div>
 
-                {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                        Menampilkan {jadwalData.length} dari {schedules.length} baris
-                    </div>
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious href="#" className="pointer-events-none opacity-50" />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#" isActive className="bg-[#00468B] text-white hover:bg-[#003366] hover:text-white">1</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">2</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationLink href="#">3</PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                                <PaginationNext href="#" />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
+                <DataPagination
+                    from={pagination.from}
+                    onPageChange={pagination.setPage}
+                    page={pagination.page}
+                    to={pagination.to}
+                    totalItems={pagination.totalItems}
+                    totalPages={pagination.totalPages}
+                />
             </div>
         </DashboardLayout>
     );
