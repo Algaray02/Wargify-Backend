@@ -57,6 +57,11 @@ export default function CreateKegiatanPage() {
         () => households.find((household) => household.household_id === form.household_id),
         [form.household_id, households]
     );
+    const selectedGroupMemberIds = useMemo(() => new Set(
+        citizenGroups
+            .filter((group) => form.target_group_ids.includes(group.group_id))
+            .flatMap((group) => group.members?.map((member) => member.user_id) ?? [])
+    ), [citizenGroups, form.target_group_ids]);
 
     const updateForm = (field, value) => {
         setForm((current) => {
@@ -89,7 +94,21 @@ export default function CreateKegiatanPage() {
                 ? currentValues.filter((item) => item !== value)
                 : [...currentValues, value];
 
-            return { ...current, [field]: nextValues };
+            if (field !== 'target_group_ids') {
+                return { ...current, [field]: nextValues };
+            }
+
+            const memberIds = new Set(
+                citizenGroups
+                    .filter((group) => nextValues.includes(group.group_id))
+                    .flatMap((group) => group.members?.map((member) => member.user_id) ?? [])
+            );
+
+            return {
+                ...current,
+                target_group_ids: nextValues,
+                target_user_ids: current.target_user_ids.filter((userId) => !memberIds.has(userId)),
+            };
         });
     };
 
@@ -103,7 +122,7 @@ export default function CreateKegiatanPage() {
             activity_date: form.activity_date,
             household_id: form.type === 'RAPAT' && form.location_mode === 'household' && selectedHousehold ? form.household_id : null,
             target_group_ids: form.target_group_ids,
-            target_user_ids: form.target_user_ids,
+            target_user_ids: form.target_user_ids.filter((userId) => !selectedGroupMemberIds.has(userId)),
         };
 
         const activity = await createActivity.mutateAsync(payload);
@@ -292,18 +311,22 @@ export default function CreateKegiatanPage() {
                                         <div className="max-h-48 space-y-2 overflow-auto rounded-lg border bg-slate-50 p-3">
                                             {filteredInviteableUsers.length === 0 ? (
                                                 <p className="rounded-md bg-white p-2 text-sm text-slate-500">Tidak ada warga yang cocok.</p>
-                                            ) : filteredInviteableUsers.map((user) => (
-                                                <label key={user.user_id} className="flex cursor-pointer items-center justify-between gap-3 rounded-md bg-white p-2">
+                                            ) : filteredInviteableUsers.map((user) => {
+                                                const includedByGroup = selectedGroupMemberIds.has(user.user_id);
+
+                                                return (
+                                                <label key={user.user_id} className={`flex items-center justify-between gap-3 rounded-md bg-white p-2 ${includedByGroup ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                                                     <span>
                                                         <span className="block text-sm font-medium text-slate-800">{user.full_name}</span>
-                                                        <span className="text-xs text-slate-500">{user.role}</span>
+                                                        <span className="text-xs text-slate-500">{includedByGroup ? 'Sudah termasuk dari kelompok yang dipilih' : user.role}</span>
                                                     </span>
                                                     <Checkbox
-                                                        checked={form.target_user_ids.includes(user.user_id)}
+                                                        checked={!includedByGroup && form.target_user_ids.includes(user.user_id)}
+                                                        disabled={includedByGroup}
                                                         onCheckedChange={() => toggleArrayValue('target_user_ids', user.user_id)}
                                                     />
                                                 </label>
-                                            ))}
+                                            )})}
                                         </div>
                                     </div>
                                 </div>

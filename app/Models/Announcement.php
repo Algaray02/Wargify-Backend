@@ -19,6 +19,7 @@ class Announcement extends Model
     protected $fillable = [
         'title',
         'content',
+        'category',
         'banner_url',
         'status', // 'DRAFT', 'PUBLISHED'
         'created_by',

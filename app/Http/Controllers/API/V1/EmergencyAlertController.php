@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmergencyAlert;
+use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -45,14 +46,13 @@ class EmergencyAlertController extends Controller
         $validated['sender_id'] = $request->user()->user_id;
 
         $alert = EmergencyAlert::create($validated);
-
-        // NOTE: Di sini titik krusial integrasi Firebase Cloud Messaging (FCM) 
-        // untuk membunyikan alarm/notifikasi instan secara massal di perangkat pengurus RT & warga terdekat.
+        $notification = app(FirebaseCloudMessagingService::class)->notifyEmergencyAlert($alert);
 
         return response()->json([
             'success' => true,
             'message' => 'Sinyal darurat SOS berhasil dikirim! Bantuan akan segera menuju lokasi Anda.',
-            'data'    => $alert->load('sender:user_id,full_name,phone_number')
+            'data'    => $alert->load('sender:user_id,full_name,phone_number'),
+            'notification' => $notification,
         ], 201);
     }
 

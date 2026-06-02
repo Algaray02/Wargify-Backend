@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\FacilityReport;
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -95,16 +96,30 @@ class FacilityReportController extends Controller
         ]);
         unset($validated['resolved_photo_file']);
 
+        $oldResolvedPhotoUrl = $report->resolved_photo_url;
+
         if ($request->hasFile('resolved_photo_file')) {
             $validated['resolved_photo_url'] = $this->uploadReportPhoto($request, 'resolved_photo_file', 'resolved');
         }
 
+        $resolvedPhotoUrl = array_key_exists('resolved_photo_url', $validated)
+            ? $validated['resolved_photo_url']
+            : $oldResolvedPhotoUrl;
+
         // Jika RT mengirim respons balasan, idealnya status juga ikut disesuaikan menjadi teratasi
         $report->update([
             'response_message'   => $validated['response_message'],
-            'resolved_photo_url' => $validated['resolved_photo_url'],
+            'resolved_photo_url' => $resolvedPhotoUrl,
             'status'             => 'RESOLVED' 
         ]);
+
+        if (
+            array_key_exists('resolved_photo_url', $validated)
+            && filled($oldResolvedPhotoUrl)
+            && $oldResolvedPhotoUrl !== $validated['resolved_photo_url']
+        ) {
+            app(SupabaseStorageService::class)->deletePublicUrl($oldResolvedPhotoUrl);
+        }
 
         return response()->json([
             'success' => true,

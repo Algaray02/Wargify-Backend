@@ -55,6 +55,7 @@ class IuranController extends Controller
         $announcement = Announcement::create([
             'title' => 'Iuran baru: ' . $period->period_name,
             'content' => 'Periode iuran ' . $period->period_name . ' telah dibuka. Nominal per KK Rp ' . number_format((float) $period->amount_per_family, 0, ',', '.') . '.',
+            'category' => 'KEUANGAN',
             'banner_url' => null,
             'status' => 'PUBLISHED',
             'created_by' => $request->user()->user_id,

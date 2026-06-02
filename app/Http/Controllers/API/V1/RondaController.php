@@ -301,6 +301,38 @@ class RondaController extends Controller
         ], 201);
     }
 
+    public function updateCheckpoint(Request $request, string $id): JsonResponse
+    {
+        $checkpoint = Checkpoint::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'latitude' => 'sometimes|required|numeric',
+            'longitude' => 'sometimes|required|numeric',
+            'qr_code_data' => 'nullable|string|unique:checkpoints,qr_code_data,' . $checkpoint->checkpoint_id . ',checkpoint_id',
+            'is_main_pos' => 'sometimes|boolean',
+        ]);
+
+        $checkpoint->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Checkpoint berhasil diperbarui',
+            'data' => $checkpoint->fresh()
+        ]);
+    }
+
+    public function destroyCheckpoint(string $id): JsonResponse
+    {
+        $checkpoint = Checkpoint::findOrFail($id);
+        $checkpoint->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Checkpoint berhasil dihapus'
+        ]);
+    }
+
     private function syncGroupMembers(RondaGroup $group, array $memberIds): void
     {
         DB::table('ronda_group_members')->where('group_id', $group->group_id)->delete();

@@ -15,8 +15,9 @@ return new class extends Migration
             $table->uuid('announcement_id')->primary();
             $table->string('title');
             $table->text('content');
+            $table->string('category')->default('HIMBAUAN');
             $table->string('banner_url')->nullable();
-            $table->string('status')->default('draft'); //draft, published
+            $table->string('status')->default('DRAFT'); // DRAFT, PUBLISHED
             $table->uuid('created_by');
             $table->foreignUuid('activity_id')->nullable()->constrained('activities', 'activity_id')->nullOnDelete();
             $table->timestamps();

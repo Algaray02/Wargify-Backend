@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -84,6 +85,8 @@ class UserController extends Controller
             $validated['password'] = Hash::make($request->password);
         }
 
+        $oldProfilePictureUrl = $user->profile_picture_url;
+
         if ($request->hasFile('profile_picture')) {
             $validated['profile_picture_url'] = $this->uploadProfilePicture($request, $user->user_id);
         }
@@ -91,6 +94,14 @@ class UserController extends Controller
         unset($validated['profile_picture']);
 
         $user->update($validated);
+
+        if (
+            array_key_exists('profile_picture_url', $validated)
+            && filled($oldProfilePictureUrl)
+            && $oldProfilePictureUrl !== $validated['profile_picture_url']
+        ) {
+            app(SupabaseStorageService::class)->deletePublicUrl($oldProfilePictureUrl);
+        }
 
         return response()->json([
             'success' => true,
@@ -101,7 +112,9 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        $profilePictureUrl = $user->profile_picture_url;
         $user->delete();
+        app(SupabaseStorageService::class)->deletePublicUrl($profilePictureUrl);
 
         return response()->json([
             'success' => true,

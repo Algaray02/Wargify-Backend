@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\TreasuryLog;
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -80,11 +81,21 @@ class TreasuryController extends Controller
 
         unset($validated['receipt_file']);
 
+        $oldReceiptUrl = $log->receipt_url;
+
         if ($request->hasFile('receipt_file')) {
             $validated['receipt_url'] = $this->uploadReceipt($request);
         }
 
         $log->update($validated);
+
+        if (
+            array_key_exists('receipt_url', $validated)
+            && filled($oldReceiptUrl)
+            && $oldReceiptUrl !== $validated['receipt_url']
+        ) {
+            app(SupabaseStorageService::class)->deletePublicUrl($oldReceiptUrl);
+        }
 
         return response()->json([
             'success' => true,
@@ -100,7 +111,9 @@ class TreasuryController extends Controller
     public function destroy($id): JsonResponse
     {
         $log = TreasuryLog::findOrFail($id);
+        $receiptUrl = $log->receipt_url;
         $log->delete();
+        app(SupabaseStorageService::class)->deletePublicUrl($receiptUrl);
 
         return response()->json([
             'success' => true,

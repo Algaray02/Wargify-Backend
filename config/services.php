@@ -41,6 +41,7 @@ return [
         'buckets' => [
             'profile' => env('SUPABASE_PROFILE_BUCKET', 'profile-pictures'),
             'activity' => env('SUPABASE_ACTIVITY_BUCKET', 'activity-photos'),
+            'announcement' => env('SUPABASE_ANNOUNCEMENT_BUCKET', 'announcement-banners'),
             'gallery' => env('SUPABASE_GALLERY_BUCKET', 'gallery-images'),
             'report' => env('SUPABASE_REPORT_BUCKET', 'facility-reports'),
             'treasury' => env('SUPABASE_TREASURY_BUCKET', 'treasury-receipts'),

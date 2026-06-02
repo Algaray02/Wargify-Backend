@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\CitizenGroupController;
 use App\Http\Controllers\API\V1\FacilityReportController;
 use App\Http\Controllers\API\V1\EmergencyAlertController;
 use App\Http\Controllers\API\V1\GalleryController;
+use App\Http\Controllers\API\V1\QrScanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::patch('/me', [AuthController::class, 'updateProfile']);
         Route::patch('/me/fcm-token', [AuthController::class, 'updateFcmToken']);
+        Route::post('/qr/scan', [QrScanController::class, 'scan']);
 
         // =====================================================
         // 2. MODUL WARGA (USERS)
@@ -102,6 +104,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/ronda/schedules/{id}/logs', [RondaController::class, 'storeRondaLog']);
             Route::get('/ronda/checkpoints', [RondaController::class, 'checkpoints']);
             Route::post('/ronda/checkpoints', [RondaController::class, 'storeCheckpoint']);
+            Route::patch('/ronda/checkpoints/{id}', [RondaController::class, 'updateCheckpoint']);
+            Route::delete('/ronda/checkpoints/{id}', [RondaController::class, 'destroyCheckpoint']);
         });
         Route::get('/ronda/schedules', [RondaController::class, 'index']);      // Akses Umum
         Route::post('/ronda/attendance', [RondaController::class, 'attendance']); // Akses Umum
@@ -126,6 +130,8 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
             Route::post('/announcements', [AnnouncementController::class, 'store']);
+            Route::patch('/announcements/{id}', [AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
             Route::post('/announcements/{id}/publish', [AnnouncementController::class, 'publish']);
         });
         Route::get('/announcements', [AnnouncementController::class, 'index']); // Akses Umum

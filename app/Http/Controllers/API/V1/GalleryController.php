@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Gallery;
 use App\Models\GalleryImage;
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -18,7 +19,7 @@ class GalleryController extends Controller
      */
     public function index(): JsonResponse
     {
-        $galleries = Gallery::with(['images', 'activity:activity_id,title,location_name'])
+        $galleries = Gallery::with(['images', 'activity:activity_id,type,title,activity_date,location_name,status'])
             ->withCount('images')
             ->latest('event_date')
             ->get();
@@ -47,7 +48,7 @@ class GalleryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Album galeri baru berhasil dibuat.',
-            'data'    => $gallery->load(['images', 'activity:activity_id,title,location_name'])
+            'data'    => $gallery->load(['images', 'activity:activity_id,type,title,activity_date,location_name,status'])
         ], 201);
     }
 
@@ -57,7 +58,7 @@ class GalleryController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $gallery = Gallery::with('images')->findOrFail($id);
+        $gallery = Gallery::with(['images', 'activity:activity_id,type,title,activity_date,location_name,status'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -85,7 +86,7 @@ class GalleryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Album galeri berhasil diperbarui.',
-            'data'    => $gallery->fresh(['images', 'activity:activity_id,title,location_name']),
+            'data'    => $gallery->fresh(['images', 'activity:activity_id,type,title,activity_date,location_name,status']),
         ]);
     }
 
@@ -126,7 +127,9 @@ class GalleryController extends Controller
     public function destroyImage($id): JsonResponse
     {
         $image = GalleryImage::findOrFail($id);
+        $imageUrl = $image->image_url;
         $image->delete();
+        app(SupabaseStorageService::class)->deletePublicUrl($imageUrl);
 
         return response()->json([
             'success' => true,
@@ -141,7 +144,9 @@ class GalleryController extends Controller
     public function destroy($id): JsonResponse
     {
         $gallery = Gallery::findOrFail($id);
+        $imageUrls = $gallery->images()->pluck('image_url');
         $gallery->delete();
+        app(SupabaseStorageService::class)->deletePublicUrls($imageUrls);
 
         return response()->json([
             'success' => true,

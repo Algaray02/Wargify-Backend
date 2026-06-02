@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Models\Announcement;
+use App\Models\EmergencyAlert;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -38,6 +39,25 @@ class FirebaseCloudMessagingService
                 'type' => 'activity',
                 'activity_id' => $activity->activity_id,
                 'activity_type' => $activity->type,
+            ]
+        );
+    }
+
+    public function notifyEmergencyAlert(EmergencyAlert $alert): array
+    {
+        $alert->loadMissing('sender:user_id,full_name,phone_number');
+        $senderName = $alert->sender?->full_name ?? 'Warga';
+
+        return $this->sendToUsers(
+            $this->allRecipients(),
+            'DARURAT SOS',
+            "{$senderName}: {$alert->message}",
+            [
+                'type' => 'sos',
+                'alert_id' => $alert->alert_id,
+                'sender_name' => $senderName,
+                'latitude' => $alert->latitude,
+                'longitude' => $alert->longitude,
             ]
         );
     }
@@ -93,6 +113,25 @@ class FirebaseCloudMessagingService
                             'body' => $body,
                         ],
                         'data' => $stringData,
+                        'android' => [
+                            'priority' => ($stringData['type'] ?? null) === 'sos' ? 'HIGH' : 'NORMAL',
+                            'notification' => [
+                                'channel_id' => ($stringData['type'] ?? null) === 'sos'
+                                    ? 'wargify_sos_alerts'
+                                    : 'wargify_notifications',
+                                'sound' => 'default',
+                            ],
+                        ],
+                        'apns' => [
+                            'headers' => [
+                                'apns-priority' => ($stringData['type'] ?? null) === 'sos' ? '10' : '5',
+                            ],
+                            'payload' => [
+                                'aps' => [
+                                    'sound' => 'default',
+                                ],
+                            ],
+                        ],
                     ],
                 ]);
 

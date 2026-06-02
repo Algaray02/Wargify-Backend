@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\Announcement;
+use App\Models\CitizenGroup;
 use App\Models\Household;
 use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\JsonResponse;
@@ -288,13 +289,22 @@ class ActivityController extends Controller
 
     private function syncTargets(Activity $activity, array $groupIds, array $userIds): void
     {
-        $groupPayload = collect($groupIds)
+        $uniqueGroupIds = collect($groupIds)->unique()->values();
+        $groupMemberIds = CitizenGroup::whereIn('group_id', $uniqueGroupIds)
+            ->with('members:user_id')
+            ->get()
+            ->flatMap(fn (CitizenGroup $group) => $group->members->pluck('user_id'))
+            ->unique()
+            ->values();
+
+        $groupPayload = $uniqueGroupIds
             ->unique()
             ->mapWithKeys(fn ($groupId) => [$groupId => ['id' => (string) Str::uuid()]])
             ->all();
 
         $userPayload = collect($userIds)
             ->unique()
+            ->diff($groupMemberIds)
             ->mapWithKeys(fn ($userId) => [$userId => ['id' => (string) Str::uuid()]])
             ->all();
 
@@ -309,6 +319,7 @@ class ActivityController extends Controller
             [
                 'title' => 'Kegiatan: ' . $activity->title,
                 'content' => $activity->description,
+                'category' => 'KEGIATAN',
                 'banner_url' => null,
                 'status' => 'PUBLISHED',
                 'created_by' => $createdBy,
