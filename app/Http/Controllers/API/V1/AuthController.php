@@ -52,9 +52,9 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal',
+                'message' => 'Validasi gagal: ' . collect($e->errors())->flatten()->first(),
                 'errors' => $e->errors(),
-            ], 422);
+            ], 200);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
