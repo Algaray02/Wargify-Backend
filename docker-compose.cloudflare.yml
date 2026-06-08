@@ -1,0 +1,41 @@
+services:
+  wargify_backend:
+    build:
+      context: .
+    image: wargify-backend:latest
+    container_name: wargify_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://wargify.algaray.dev
+      LOG_CHANNEL: stderr
+    ports:
+      - "127.0.0.1:8081:8000"
+    networks:
+      - cloudflare
+
+  wargify_queue:
+    image: wargify-backend:latest
+    container_name: wargify_queue
+    profiles:
+      - queue
+    restart: unless-stopped
+    depends_on:
+      - wargify_backend
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://wargify.algaray.dev
+      LOG_CHANNEL: stderr
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
+    networks:
+      - cloudflare
+
+networks:
+  cloudflare:
+    external: true
