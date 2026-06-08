@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class IuranPeriod extends Model
@@ -17,6 +18,7 @@ class IuranPeriod extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'category_id',
         'period_name',
         'month',
         'year',
@@ -24,9 +26,11 @@ class IuranPeriod extends Model
         'payment_qr_code',
     ];
 
-    /**
-     * Relasi ke daftar pembayaran tagihan per keluarga di periode ini.
-     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(IuranCategory::class, 'category_id', 'category_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(IuranPayment::class, 'period_id', 'period_id');

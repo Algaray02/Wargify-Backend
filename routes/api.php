@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/iuran-periods', [IuranController::class, 'indexPeriod']);
             Route::patch('/iuran-periods/{id}', [IuranController::class, 'updatePeriod']);
             Route::delete('/iuran-periods/{id}', [IuranController::class, 'destroyPeriod']);
+            Route::post('/iuran/check-arrears', [IuranController::class, 'checkArrears']);
             Route::get('/iuran-periods/{id}/payments', [IuranController::class, 'periodPayments']);
             Route::post('/iuran-payments', [IuranController::class, 'storePayment']);
             Route::patch('/iuran-payments/{id}', [IuranController::class, 'updatePayment']);
