@@ -44,6 +44,10 @@ const formatDate = (value) => value
     ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
     : '-';
 
+const formatWeekday = (value) => value
+    ? new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date(value))
+    : '-';
+
 const formatTime = (value) => value
     ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
     : '-';
@@ -67,6 +71,7 @@ export default function JadwalRondaPage() {
             const memberCount = schedule.group?.members?.length ?? 0;
             const matchesStatus = statusFilter === 'ALL' || schedule.status === statusFilter;
             const matchesSearch = [
+                formatWeekday(schedule.schedule_date),
                 formatDate(schedule.schedule_date),
                 schedule.group?.name,
                 schedule.coordinator?.full_name,
@@ -92,7 +97,7 @@ export default function JadwalRondaPage() {
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Jadwal Ronda</h1>
                         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-                            Atur jadwal ronda, lihat anggota bertugas, checkpoint, presensi, dan status pelaksanaan.
+                            Atur 7 jadwal mingguan Senin-Minggu yang berlaku seterusnya.
                         </p>
                     </div>
                     <Link href="/ronda/jadwal/create">
@@ -109,7 +114,7 @@ export default function JadwalRondaPage() {
                             <CalendarClock className="size-9 rounded-lg bg-blue-50 p-2 text-blue-700" />
                             <div>
                                 <p className="text-xs font-medium text-slate-500">Total jadwal</p>
-                                <p className="text-2xl font-semibold text-slate-900">{schedules.length}</p>
+                                <p className="text-2xl font-semibold text-slate-900">{schedules.length}/7</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -147,7 +152,7 @@ export default function JadwalRondaPage() {
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                             <Input
-                                placeholder="Cari tanggal, kelompok, koordinator, status, presensi, atau checkpoint"
+                                placeholder="Cari hari, kelompok, koordinator, status, presensi, atau checkpoint"
                                 className="pl-9"
                                 value={search}
                                 onChange={(event) => setSearch(event.target.value)}
@@ -203,8 +208,8 @@ export default function JadwalRondaPage() {
                                     <TableRow key={schedule.schedule_id}>
                                         <TableCell>
                                             <div>
-                                                <p className="font-semibold text-slate-900">{formatDate(schedule.schedule_date)}</p>
-                                                <p className="text-xs text-slate-500">{formatTime(schedule.shift_start)} - {formatTime(schedule.shift_end)}</p>
+                                                <p className="font-semibold text-slate-900">{formatWeekday(schedule.schedule_date)}</p>
+                                                <p className="text-xs text-slate-500">Berlaku mingguan · {formatTime(schedule.shift_start)} - {formatTime(schedule.shift_end)}</p>
                                             </div>
                                         </TableCell>
                                         <TableCell>{schedule.group?.name ?? '-'}</TableCell>

@@ -4,14 +4,39 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { useRondaCheckpoints, useRondaGroups, useRondaSchedules, useUpdateRondaSchedule } from '@/hooks/useRonda';
-import { ArrowLeft, MapPin, Save, Users } from 'lucide-react';
+import { useRondaGroups, useRondaSchedules, useUpdateRondaSchedule } from '@/hooks/useRonda';
+import { ArrowLeft, Save, Users } from 'lucide-react';
 
-const toInputDate = (value) => value ? new Date(value).toISOString().slice(0, 10) : '';
+const weekdayOptions = [
+    { value: '1', label: 'Senin' },
+    { value: '2', label: 'Selasa' },
+    { value: '3', label: 'Rabu' },
+    { value: '4', label: 'Kamis' },
+    { value: '5', label: 'Jumat' },
+    { value: '6', label: 'Sabtu' },
+    { value: '7', label: 'Minggu' },
+];
+
+const weekdayFromDate = (value) => {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '';
+
+    return String(date.getDay() === 0 ? 7 : date.getDay());
+};
+
+const dateForWeekday = (dayOfWeek) => {
+    const today = new Date();
+    const todayIsoDay = today.getDay() === 0 ? 7 : today.getDay();
+    const daysUntilTarget = (Number(dayOfWeek) - todayIsoDay + 7) % 7;
+    const date = new Date(today);
+    date.setDate(today.getDate() + daysUntilTarget);
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 const toInputTime = (value) => value ? new Date(value).toTimeString().slice(0, 5) : '';
 const toDateTime = (date, time, addDay = false) => {
     if (!date || !time) return null;
@@ -26,20 +51,27 @@ export default function EditJadwalRondaPage() {
     const [form, setForm] = useState({
         group_id: '',
         coordinator_id: '',
-        schedule_date: '',
+        weekday: '1',
         shift_start: '',
         shift_end: '',
         status: 'SCHEDULED',
-        checkpoint_ids: [],
     });
     const { data: schedules = [], isLoading } = useRondaSchedules();
     const { data: groups = [] } = useRondaGroups();
-    const { data: checkpoints = [] } = useRondaCheckpoints();
     const updateSchedule = useUpdateRondaSchedule();
     const schedule = useMemo(() => schedules.find((item) => item.schedule_id === scheduleId), [scheduleId, schedules]);
     const selectedGroup = useMemo(() => groups.find((group) => group.group_id === form.group_id), [form.group_id, groups]);
     const members = selectedGroup?.members ?? [];
     const groupOptions = groups.map((group) => ({ value: group.group_id, label: group.name }));
+    const usedWeekdays = useMemo(
+        () => new Set(
+            schedules
+                .filter((item) => item.schedule_id !== scheduleId)
+                .map((item) => weekdayFromDate(item.schedule_date))
+                .filter(Boolean)
+        ),
+        [scheduleId, schedules]
+    );
     const statusOptions = [
         { value: 'SCHEDULED', label: 'Terjadwal' },
         { value: 'ONGOING', label: 'Berlangsung' },
@@ -52,11 +84,10 @@ export default function EditJadwalRondaPage() {
         setForm({
             group_id: schedule.group_id,
             coordinator_id: schedule.coordinator_id,
-            schedule_date: toInputDate(schedule.schedule_date),
+            weekday: weekdayFromDate(schedule.schedule_date),
             shift_start: toInputTime(schedule.shift_start),
             shift_end: toInputTime(schedule.shift_end),
             status: schedule.status,
-            checkpoint_ids: schedule.checkpoints?.map((checkpoint) => checkpoint.checkpoint_id) ?? [],
         });
     }, [schedule]);
 
@@ -68,27 +99,19 @@ export default function EditJadwalRondaPage() {
         return { ...current, [field]: value };
     });
 
-    const toggleCheckpoint = (checkpointId) => {
-        setForm((current) => ({
-            ...current,
-            checkpoint_ids: current.checkpoint_ids.includes(checkpointId)
-                ? current.checkpoint_ids.filter((id) => id !== checkpointId)
-                : [...current.checkpoint_ids, checkpointId],
-        }));
-    };
-
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const scheduleDate = dateForWeekday(form.weekday);
+
         await updateSchedule.mutateAsync({
             scheduleId,
             payload: {
                 group_id: form.group_id,
                 coordinator_id: form.coordinator_id,
-                schedule_date: form.schedule_date,
-                shift_start: toDateTime(form.schedule_date, form.shift_start),
-                shift_end: toDateTime(form.schedule_date, form.shift_end, form.shift_end < form.shift_start),
+                schedule_date: scheduleDate,
+                shift_start: toDateTime(scheduleDate, form.shift_start),
+                shift_end: toDateTime(scheduleDate, form.shift_end, form.shift_end < form.shift_start),
                 status: form.status,
-                checkpoint_ids: form.checkpoint_ids,
             },
         });
         router.visit('/ronda/jadwal');
@@ -104,7 +127,7 @@ export default function EditJadwalRondaPage() {
                     </Link>
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Edit Jadwal Ronda</h1>
-                        <p className="mt-2 max-w-2xl text-sm text-gray-500">Perbarui kelompok, koordinator, waktu, status, dan checkpoint jadwal.</p>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500">Perbarui hari mingguan, kelompok, koordinator, waktu, dan status jadwal.</p>
                     </div>
                 </div>
 
@@ -112,8 +135,7 @@ export default function EditJadwalRondaPage() {
                 {!isLoading && !schedule && <p className="rounded-lg border bg-white p-6 text-sm text-slate-500">Jadwal tidak ditemukan.</p>}
 
                 {schedule && (
-                    <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1fr_380px]">
-                        <div className="space-y-6">
+                    <form onSubmit={handleSubmit} className="max-w-5xl space-y-6">
                             <Card className="rounded-lg">
                                 <CardHeader><CardTitle>Detail Jadwal</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
@@ -138,7 +160,19 @@ export default function EditJadwalRondaPage() {
                                         </div>
                                     </div>
                                     <div className="grid gap-4 md:grid-cols-3">
-                                        <div className="grid gap-2"><Label>Tanggal</Label><Input type="date" value={form.schedule_date} onChange={(e) => updateForm('schedule_date', e.target.value)} required /></div>
+                                        <div className="grid gap-2">
+                                            <Label>Hari</Label>
+                                            <Select value={form.weekday} onValueChange={(value) => updateForm('weekday', value)}>
+                                                <SelectTrigger>{selectedLabel(form.weekday, weekdayOptions, 'Pilih hari')}</SelectTrigger>
+                                                <SelectContent>
+                                                    {weekdayOptions.map((day) => (
+                                                        <SelectItem key={day.value} value={day.value} disabled={usedWeekdays.has(day.value)}>
+                                                            {day.label}{usedWeekdays.has(day.value) ? ' - sudah ada' : ''}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                         <div className="grid gap-2"><Label>Mulai</Label><Input type="time" value={form.shift_start} onChange={(e) => updateForm('shift_start', e.target.value)} required /></div>
                                         <div className="grid gap-2"><Label>Selesai</Label><Input type="time" value={form.shift_end} onChange={(e) => updateForm('shift_end', e.target.value)} required /></div>
                                     </div>
@@ -158,25 +192,13 @@ export default function EditJadwalRondaPage() {
                                     </RadioGroup>
                                 </CardContent>
                             </Card>
-                        </div>
 
-                        <Card className="rounded-lg">
-                            <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="size-5 text-[#00468B]" /> Checkpoint</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="max-h-[520px] space-y-2 overflow-auto">
-                                    {checkpoints.map((checkpoint) => (
-                                        <label key={checkpoint.checkpoint_id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3">
-                                            <span><span className="block text-sm font-medium">{checkpoint.name}</span><span className="text-xs text-slate-500">{checkpoint.qr_code_data}</span></span>
-                                            <Checkbox checked={form.checkpoint_ids.includes(checkpoint.checkpoint_id)} onCheckedChange={() => toggleCheckpoint(checkpoint.checkpoint_id)} />
-                                        </label>
-                                    ))}
-                                </div>
-                                <Button type="submit" disabled={updateSchedule.isPending || !form.group_id || !form.coordinator_id} className="w-full bg-[#00468B] text-white hover:bg-[#003366]">
-                                    <Save className="size-4" />
-                                    {updateSchedule.isPending ? 'Menyimpan...' : 'Simpan Jadwal'}
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        <div className="flex justify-end">
+                            <Button type="submit" disabled={updateSchedule.isPending || !form.group_id || !form.coordinator_id || usedWeekdays.has(form.weekday)} className="bg-[#00468B] text-white hover:bg-[#003366]">
+                                <Save className="size-4" />
+                                {updateSchedule.isPending ? 'Menyimpan...' : 'Simpan Jadwal'}
+                            </Button>
+                        </div>
                     </form>
                 )}
             </div>

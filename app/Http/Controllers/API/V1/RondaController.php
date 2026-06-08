@@ -9,6 +9,7 @@ use App\Models\RondaGroup;
 use App\Models\RondaLog;
 use App\Models\PatrolCheckpointLog;
 use App\Models\Checkpoint;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -20,9 +21,12 @@ class RondaController extends Controller
     // show schedule ronda
     public function index(): JsonResponse
     {
+        $this->syncMissingCheckpointsForAllSchedules();
+
         $schedules = RondaSchedule::with(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'rondaLog'])
-            ->latest('schedule_date')
-            ->get();
+            ->get()
+            ->sortBy(fn (RondaSchedule $schedule) => Carbon::parse($schedule->schedule_date)->isoWeekday())
+            ->values();
 
         return response()->json([
             'success' => true,
@@ -167,25 +171,12 @@ class RondaController extends Controller
             'checkpoint_ids.*' => 'exists:checkpoints,checkpoint_id',
         ]);
 
-        $checkpointIds = $validated['checkpoint_ids'] ?? [];
         unset($validated['checkpoint_ids']);
+        $validated = $this->normalizeScheduleData($validated);
+        $this->ensureWeekdayIsAvailable(Carbon::parse($validated['schedule_date'])->isoWeekday());
 
         $schedule = RondaSchedule::create($validated);
-
-        if (!empty($checkpointIds)) {
-            DB::table('schedule_checkpoints')->where('schedule_id', $schedule->schedule_id)->delete();
-
-            DB::table('schedule_checkpoints')->insert(array_map(
-                fn ($checkpointId) => [
-                    'id' => (string) Str::uuid(),
-                    'schedule_id' => $schedule->schedule_id,
-                    'checkpoint_id' => $checkpointId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ],
-                $checkpointIds
-            ));
-        }
+        $this->syncScheduleCheckpoints($schedule, $this->allCheckpointIds());
 
         return response()->json([
             'success' => true,
@@ -201,7 +192,7 @@ class RondaController extends Controller
         $validated = $request->validate([
             'group_id' => 'sometimes|required|exists:ronda_groups,group_id',
             'coordinator_id' => 'sometimes|required|exists:users,user_id',
-            'schedule_date' => 'sometimes|required|date',
+            'schedule_date' => 'nullable|date',
             'shift_start' => 'nullable|date',
             'shift_end' => 'nullable|date|after_or_equal:shift_start',
             'status' => 'nullable|in:SCHEDULED,ONGOING,COMPLETED,MISSED',
@@ -209,14 +200,12 @@ class RondaController extends Controller
             'checkpoint_ids.*' => 'exists:checkpoints,checkpoint_id',
         ]);
 
-        $checkpointIds = $validated['checkpoint_ids'] ?? null;
         unset($validated['checkpoint_ids']);
+        $validated = $this->normalizeScheduleData($validated, $schedule);
+        $this->ensureWeekdayIsAvailable(Carbon::parse($validated['schedule_date'])->isoWeekday(), $schedule->schedule_id);
 
         $schedule->update($validated);
-
-        if (is_array($checkpointIds)) {
-            $this->syncScheduleCheckpoints($schedule, $checkpointIds);
-        }
+        $this->syncScheduleCheckpoints($schedule, $this->allCheckpointIds());
 
         return response()->json([
             'success' => true,
@@ -293,6 +282,7 @@ class RondaController extends Controller
         $validated['qr_code_data'] = $validated['qr_code_data'] ?? 'QR-RONDA-' . Str::upper(Str::slug($validated['name'])) . '-' . Str::upper(Str::random(6));
 
         $checkpoint = Checkpoint::create($validated);
+        $this->attachCheckpointToAllSchedules($checkpoint->checkpoint_id);
 
         return response()->json([
             'success' => true,
@@ -371,5 +361,101 @@ class RondaController extends Controller
             ],
             array_values(array_unique($checkpointIds))
         ));
+    }
+
+    private function normalizeScheduleData(array $data, ?RondaSchedule $schedule = null): array
+    {
+        if (isset($data['schedule_date'])) {
+            $dayOfWeek = Carbon::parse($data['schedule_date'])->isoWeekday();
+        } elseif ($schedule?->schedule_date) {
+            $dayOfWeek = Carbon::parse($schedule->schedule_date)->isoWeekday();
+        }
+
+        if (!isset($dayOfWeek)) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Hari jadwal ronda wajib dipilih.',
+            ], 422));
+        }
+
+        $baseDate = $this->dateForWeekday((int) $dayOfWeek);
+        $data['schedule_date'] = $baseDate->toDateString();
+
+        if (array_key_exists('shift_start', $data) && $data['shift_start']) {
+            $start = Carbon::parse($data['shift_start'])->setDate($baseDate->year, $baseDate->month, $baseDate->day);
+            $data['shift_start'] = $start;
+        } else {
+            $start = $schedule?->shift_start ? Carbon::parse($schedule->shift_start) : null;
+        }
+
+        if (array_key_exists('shift_end', $data) && $data['shift_end']) {
+            $end = Carbon::parse($data['shift_end'])->setDate($baseDate->year, $baseDate->month, $baseDate->day);
+            if ($start && $end->lessThan($start)) {
+                $end->addDay();
+            }
+            $data['shift_end'] = $end;
+        }
+
+        return $data;
+    }
+
+    private function dateForWeekday(int $dayOfWeek): Carbon
+    {
+        $today = now()->startOfDay();
+        $daysUntilTarget = ($dayOfWeek - (int) $today->isoWeekday() + 7) % 7;
+
+        return $today->copy()->addDays($daysUntilTarget);
+    }
+
+    private function ensureWeekdayIsAvailable(int $dayOfWeek, ?string $ignoreScheduleId = null): void
+    {
+        $exists = RondaSchedule::query()
+            ->when($ignoreScheduleId, fn ($query) => $query->where('schedule_id', '!=', $ignoreScheduleId))
+            ->get(['schedule_id', 'schedule_date'])
+            ->contains(fn (RondaSchedule $schedule) => Carbon::parse($schedule->schedule_date)->isoWeekday() === $dayOfWeek);
+
+        if ($exists) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Jadwal ronda untuk hari tersebut sudah ada. Silakan edit jadwal yang sudah ada.',
+            ], 422));
+        }
+    }
+
+    private function allCheckpointIds(): array
+    {
+        return Checkpoint::orderByDesc('is_main_pos')
+            ->orderBy('name')
+            ->pluck('checkpoint_id')
+            ->all();
+    }
+
+    private function attachCheckpointToAllSchedules(string $checkpointId): void
+    {
+        RondaSchedule::query()
+            ->pluck('schedule_id')
+            ->each(function (string $scheduleId) use ($checkpointId) {
+                $exists = DB::table('schedule_checkpoints')
+                    ->where('schedule_id', $scheduleId)
+                    ->where('checkpoint_id', $checkpointId)
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('schedule_checkpoints')->insert([
+                        'id' => (string) Str::uuid(),
+                        'schedule_id' => $scheduleId,
+                        'checkpoint_id' => $checkpointId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            });
+    }
+
+    private function syncMissingCheckpointsForAllSchedules(): void
+    {
+        foreach ($this->allCheckpointIds() as $checkpointId) {
+            $this->attachCheckpointToAllSchedules($checkpointId);
+        }
     }
 }
