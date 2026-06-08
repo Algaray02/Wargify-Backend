@@ -18,7 +18,17 @@ class AnnouncementController extends Controller
      * GET /api/v1/announcements
      */
     public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $query = Announcement::with([
+                'creator:user_id,full_name',
+                'activity:activity_id,title,type,activity_date',
+            ])
+            ->latest();
+
+        if ($request->user()?->role === 'WARGA') {
+            $query->where('status', 'PUBLISHED');
+        }
         $query = Announcement::with([
                 'creator:user_id,full_name',
                 'activity:activity_id,title,type,activity_date',
@@ -32,6 +42,7 @@ class AnnouncementController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Daftar pengumuman berhasil diambil.',
+            'data'    => $query->get()
             'data'    => $query->get()
         ]);
     }
@@ -78,6 +89,7 @@ class AnnouncementController extends Controller
         $announcement = Announcement::findOrFail($id);
 
         $announcement->update(['status' => 'PUBLISHED']);
+        $notification = app(FirebaseCloudMessagingService::class)->notifyAnnouncement($announcement);
         $notification = app(FirebaseCloudMessagingService::class)->notifyAnnouncement($announcement);
 
         // NOTE: Di sini tempat memicu Push Notification FCM ke aplikasi mobile seluruh warga

@@ -52,14 +52,31 @@ return new class extends Migration {
         });
 
         // B. KEUANGAN (IURAN)
+        Schema::create('iuran_categories', function (Blueprint $table) {
+            $table->uuid('category_id')->primary();
+            $table->string('name'); // Contoh: 'Iuran Keamanan', 'Iuran Kebersihan', 'Iuran Kematian'
+            $table->enum('type', ['MONTHLY', 'INCIDENTAL'])->default('MONTHLY');
+            $table->decimal('default_amount', 15, 2); // Tarif dasar jika keluarga tidak punya tarif khusus
+            $table->timestamps();
+        });
+
         Schema::create('iuran_periods', function (Blueprint $table) {
             $table->uuid('period_id')->primary();
+            $table->foreignUuid('category_id')->constrained('iuran_categories', 'category_id')->cascadeOnDelete();
             $table->string('period_name');
             $table->integer('month');
             $table->integer('year');
-            $table->decimal('amount_per_family', 15, 2);
             $table->text('payment_qr_code', 255)->unique();
             $table->timestamps();
+        });
+
+        Schema::create('family_iuran_tariffs', function (Blueprint $table) {
+            $table->uuid('tariff_id')->primary();
+            $table->foreignUuid('family_id')->constrained('families', 'family_id')->cascadeOnDelete();
+            $table->foreignUuid('category_id')->constrained('iuran_categories', 'category_id')->cascadeOnDelete();
+            $table->decimal('amount', 15, 2); // Nominal berbeda-beda per family untuk kategori ini
+            $table->timestamps();
+            $table->unique(['family_id', 'category_id']); // Satu keluarga hanya punya satu tarif per kategori
         });
 
         Schema::create('iuran_payments', function (Blueprint $table) {
@@ -236,8 +253,12 @@ return new class extends Migration {
         Schema::dropIfExists('ronda_groups');
         Schema::dropIfExists('checkpoints');
         Schema::dropIfExists('treasury_logs');
+        
         Schema::dropIfExists('iuran_payments');
-        Schema::dropIfExists('iuran_periods');
+        Schema::dropIfExists('family_iuran_tariffs'); 
+        Schema::dropIfExists('iuran_periods');        
+        Schema::dropIfExists('iuran_categories');
+        
         Schema::dropIfExists('user_group_members');
         Schema::dropIfExists('citizen_groups');
         Schema::dropIfExists('users');

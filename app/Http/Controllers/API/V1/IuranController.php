@@ -7,6 +7,8 @@ use App\Models\Announcement;
 use App\Models\IuranPeriod;
 use App\Models\IuranPayment;
 use App\Models\Family;
+use App\Models\FamilyIuranTariff;
+use App\Models\IuranCategory;
 use App\Models\TreasuryLog;
 use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\Request;
@@ -21,12 +23,7 @@ class IuranController extends Controller
      */
     public function indexPeriod(): JsonResponse
     {
-        $periods = IuranPeriod::withCount([
-                'payments',
-                'payments as paid_payments_count' => fn ($query) => $query->where('amount_paid', '>', 0),
-            ])
-            ->latest()
-            ->get();
+        $periods = IuranPeriod::with('category')->latest()->get();
 
         return response()->json([
             'success' => true,
@@ -42,24 +39,25 @@ class IuranController extends Controller
     public function storePeriod(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'category_id'       => 'required|exists:iuran_categories,category_id',
             'period_name'       => 'required|string|max:255',
             'month'             => 'required|integer|between:1,12',
             'year'              => 'required|integer|min:2026',
-            'amount_per_family' => 'required|numeric|min:0',
         ]);
 
-        // Generate QR Code Statis untuk pembayaran bulan ini
+        $category = IuranCategory::findOrFail($validated['category_id']);
         $validated['payment_qr_code'] = 'QR-PAY-' . Str::upper(Str::slug($validated['period_name']));
-
         $period = IuranPeriod::create($validated);
+
         $announcement = Announcement::create([
+            'announcement_id' => Str::uuid(),
             'title' => 'Iuran baru: ' . $period->period_name,
-            'content' => 'Periode iuran ' . $period->period_name . ' telah dibuka. Nominal per KK Rp ' . number_format((float) $period->amount_per_family, 0, ',', '.') . '.',
-            'category' => 'KEUANGAN',
+            'content' => 'Periode iuran ' . $period->period_name . ' (' . $category->name . ') telah dibuka. Nominal standar per KK Rp ' . number_format((float) $category->default_amount, 0, ',', '.') . '.',
             'banner_url' => null,
-            'status' => 'PUBLISHED',
+            'status' => 'published',
             'created_by' => $request->user()->user_id,
         ]);
+
         app(FirebaseCloudMessagingService::class)->notifyAnnouncement($announcement);
 
         return response()->json([
@@ -75,10 +73,10 @@ class IuranController extends Controller
         $oldTreasuryDescription = $this->iuranSummaryDescription($period);
 
         $validated = $request->validate([
+            'category_id'       => 'required|exists:iuran_categories,category_id',
             'period_name'       => 'sometimes|required|string|max:255',
             'month'             => 'sometimes|required|integer|between:1,12',
             'year'              => 'sometimes|required|integer|min:2026',
-            'amount_per_family' => 'sometimes|required|numeric|min:0',
         ]);
 
         if (isset($validated['period_name'])) {
@@ -121,37 +119,104 @@ class IuranController extends Controller
         ]);
     }
 
+    //untuk cek tunggakan
+    public function checkArrears(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'family_id' => 'required|exists:families,family_id',
+        ]);
+
+        $familyId = $validated['family_id'];
+
+        // 1. Get all period dues created by the RT management
+        $allPeriods = IuranPeriod::with('category')->get();
+
+        // 2. Get period IDs that have ALREADY BEEN PAID by this family
+        $paidPeriodIds = IuranPayment::where('family_id', $familyId)
+            ->where('amount_paid', '>', 0)
+            ->pluck('period_id')
+            ->toArray();
+
+        // 3. Get any custom tariff exceptions specifically set for this family
+        $customTariffs = FamilyIuranTariff::where('family_id', $familyId)
+            ->pluck('amount', 'category_id');
+
+        $arrearsDetails = [];
+        $totalOutstanding = 0;
+
+        // 4. Loop through to find unpaid/outstanding periods
+        foreach ($allPeriods as $period) {
+            if (!in_array($period->period_id, $paidPeriodIds)) {
+                
+                // Use custom family tariff if available, otherwise fallback to standard category default amount
+                $tariffAmount = (float) ($customTariffs->get($period->category_id) ?? $period->category->default_amount);
+
+                $arrearsDetails[] = [
+                    'period_id'     => $period->period_id,
+                    'period_name'   => $period->period_name,
+                    'category_name' => $period->category->name,
+                    'amount'        => $tariffAmount,
+                ];
+
+                $totalOutstanding += $tariffAmount;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Family outstanding arrears calculated successfully.',
+            'data'    => [
+                'family_id'         => $familyId,
+                'total_outstanding' => $totalOutstanding,
+                'details'           => $arrearsDetails
+            ]
+        ]);
+    }
+
     /**
      * Melihat rekap status seluruh tagihan keluarga pada bulan tersebut.
      * GET /api/v1/iuran-periods/{id}/payments
      */
     public function periodPayments($id): JsonResponse
     {
-        $period = IuranPeriod::findOrFail($id);
+        $period = IuranPeriod::with('category')->findOrFail($id);
+        
+        // Ambil semua transaksi yang sudah masuk di periode ini
         $paymentsByFamily = IuranPayment::where('period_id', $id)
             ->with(['family.headOfFamily', 'family.household', 'payer'])
             ->get()
             ->keyBy('family_id');
 
+        // Ambil semua daftar tarif kustom khusus kategori ini (Revisi Dosen)
+        $customTariffs = FamilyIuranTariff::where('category_id', $period->category_id)
+            ->pluck('amount', 'family_id');
+
+        $defaultAmount = (float) $period->category->default_amount;
+
         $payments = Family::with(['headOfFamily', 'household', 'members'])
             ->orderBy('created_at')
             ->get()
-            ->map(function (Family $family) use ($paymentsByFamily, $period) {
+            ->map(function (Family $family) use ($paymentsByFamily, $period, $customTariffs, $defaultAmount) {
                 $payment = $paymentsByFamily->get($family->family_id);
+                
+                // Jika ada tarif kustom gunakan tarif kustom, jika tidak gunakan tarif default kategori
+                $targetAmount = (float) ($customTariffs->get($family->family_id) ?? $defaultAmount);
+                $amountPaid = (float) ($payment?->amount_paid ?? 0);
 
                 return [
-                    'payment_id' => $payment?->payment_id,
-                    'period_id' => $period->period_id,
-                    'family_id' => $family->family_id,
-                    'family' => $family,
-                    'payer' => $payment?->payer,
+                    'payment_id'      => $payment?->payment_id,
+                    'period_id'       => $period->period_id,
+                    'family_id'       => $family->family_id,
+                    'family'          => $family,
+                    'payer'           => $payment?->payer,
                     'paid_by_user_id' => $payment?->paid_by_user_id,
-                    'amount_paid' => (float) ($payment?->amount_paid ?? 0),
-                    'paid_at' => $payment?->paid_at,
-                    'is_paid' => $payment && (float) $payment->amount_paid > 0,
+                    'amount_paid'     => $amountPaid,
+                    'target_amount'   => $targetAmount,
+                    'paid_at'         => $payment?->paid_at,
+                    'is_paid'         => $payment && $amountPaid >= $targetAmount,
                     'payment_qr_code' => $period->payment_qr_code . '-FAM-' . Str::upper(Str::substr($family->family_id, 0, 8)),
-                    'created_at' => $payment?->created_at,
-                    'updated_at' => $payment?->updated_at,
+                    'created_at'      => $payment?->created_at,
+                    'updated_at'      => $payment?->updated_at,
                 ];
             });
 
@@ -159,7 +224,7 @@ class IuranController extends Controller
             'success' => true,
             'message' => 'Rekap pembayaran periode ini berhasil diambil.',
             'data'    => [
-                'period' => $period,
+                'period'   => $period,
                 'payments' => $payments,
             ]
         ]);
@@ -171,35 +236,43 @@ class IuranController extends Controller
      */
     public function storePayment(Request $request): JsonResponse
     {
+        // Dibuat fleksibel: mendukung pencatatan via payment_id lama maupun kombinasi period_id + family_id baru
         $validated = $request->validate([
-            'payment_id'      => 'nullable|exists:iuran_payments,payment_id',
+            'payment_id'      => 'nullable|string',
             'period_id'       => 'required_without:payment_id|exists:iuran_periods,period_id',
             'family_id'       => 'required_without:payment_id|exists:families,family_id',
             'paid_by_user_id' => 'required|exists:users,user_id',
             'amount_paid'     => 'required|numeric|min:0',
         ]);
 
-        $payment = isset($validated['payment_id'])
-            ? IuranPayment::findOrFail($validated['payment_id'])
-            : IuranPayment::firstOrNew([
-                'period_id' => $validated['period_id'],
-                'family_id' => $validated['family_id'],
+        if (!empty($validated['payment_id'])) {
+            $payment = IuranPayment::findOrFail($validated['payment_id']);
+            $payment->update([
+                'paid_by_user_id' => $validated['paid_by_user_id'],
+                'amount_paid'     => $validated['amount_paid'],
+                'paid_at'         => now(),
             ]);
+        } else {
+            // Karena data pembayaran tidak di-generate di awal, gunakan updateOrCreate saat warga bayar lewat scan QR
+            $payment = IuranPayment::updateOrCreate(
+                [
+                    'period_id' => $validated['period_id'],
+                    'family_id' => $validated['family_id'],
+                ],
+                [
+                    'paid_by_user_id' => $validated['paid_by_user_id'],
+                    'amount_paid'     => $validated['amount_paid'],
+                    'paid_at'         => now(),
+                ]
+            );
+        }
 
-        $payment->fill([
-            'period_id'        => $payment->period_id ?? $validated['period_id'],
-            'family_id'        => $payment->family_id ?? $validated['family_id'],
-            'paid_by_user_id' => $validated['paid_by_user_id'],
-            'amount_paid'     => $validated['amount_paid'],
-            'paid_at'         => now(),
-        ])->save();
-        $payment->load(['period', 'family.headOfFamily', 'payer']);
-
+        $payment->load(['period.category', 'family.headOfFamily', 'payer']);
         $this->syncPeriodTreasuryLog($payment->period, $request->user()->user_id);
 
         return response()->json([
             'success' => true,
-            'message' => 'Catatan pembayaran berhasil diperbarui.',
+            'message' => 'Catatan pembayaran iuran warga berhasil disimpan.',
             'data'    => $payment
         ]);
     }
@@ -259,7 +332,7 @@ class IuranController extends Controller
         }
 
         $myPayments = IuranPayment::where('family_id', $user->family_id)
-            ->with('period')
+            ->with('period.category')
             ->latest()
             ->get();
 
@@ -272,6 +345,8 @@ class IuranController extends Controller
 
     private function syncPeriodTreasuryLog(IuranPeriod $period, string $recordedBy): void
     {
+        $period->loadMissing('category');
+
         $payments = IuranPayment::where('period_id', $period->period_id)
             ->where('amount_paid', '>', 0)
             ->get(['payment_id', 'amount_paid']);
@@ -334,7 +409,8 @@ class IuranController extends Controller
         ];
 
         $month = $months[(int) $period->month] ?? $period->period_name;
+        $categoryName = $period->category ? $period->category->name : 'Warga';
 
-        return "Rekap pembayaran iuran warga bulan {$month} {$period->year}";
+        return "Rekap pembayaran iuran {$categoryName} bulan {$month} {$period->year}";
     }
 }
