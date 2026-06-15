@@ -71,6 +71,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/iuran-periods/{id}', [IuranController::class, 'updatePeriod']);
             Route::delete('/iuran-periods/{id}', [IuranController::class, 'destroyPeriod']);
             Route::post('/iuran/check-arrears', [IuranController::class, 'checkArrears']);
+            Route::post('/iuran/process-payments', [IuranController::class, 'processPayment']);
             Route::get('/iuran-periods/{id}/payments', [IuranController::class, 'periodPayments']);
             Route::post('/iuran-payments', [IuranController::class, 'storePayment']);
             Route::patch('/iuran-payments/{id}', [IuranController::class, 'updatePayment']);
@@ -87,8 +88,11 @@ Route::prefix('v1')->group(function () {
             Route::patch('/treasury-logs/{id}', [TreasuryController::class, 'update']);
             Route::delete('/treasury-logs/{id}', [TreasuryController::class, 'destroy']);
             Route::get('/treasury-summary', [TreasuryController::class, 'summary']);
+            
         });
-
+            
+        Route::get('/treasury-audit-summary', [TreasuryController::class, 'auditSummary']);
+        
         // =====================================================
         // 6. MODUL RONDA
         // =====================================================

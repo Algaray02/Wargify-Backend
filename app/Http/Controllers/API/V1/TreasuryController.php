@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Family;
+use App\Models\IuranPayment;
+use App\Models\IuranPeriod;
 use App\Models\TreasuryLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -127,6 +130,77 @@ class TreasuryController extends Controller
                 'current_balance' => (float) $currentBalance,
             ]
         ]);
+    }
+
+    //untuk halaman audit bendahara
+    public function auditSummary(): JsonResponse
+    {
+        try {
+            // 1. Gunakan WHERE LOWER untuk mengamankan variasi teks 'income' / 'INCOME' di database
+            $totalIncome = (float) (TreasuryLog::whereRaw('LOWER(type) = ?', ['income'])->sum('amount') ?? 0);
+            $totalExpense = (float) (TreasuryLog::whereRaw('LOWER(type) = ?', ['expense'])->sum('amount') ?? 0);
+            $currentBalance = $totalIncome - $totalExpense;
+
+            // 2. Ambil list rincian pengeluaran dengan filter lower case
+            $expensesList = TreasuryLog::whereRaw('LOWER(type) = ?', ['expense'])
+                ->latest()
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'title' => $item->source ?? 'Pengeluaran Kas',
+                        'amount' => (float) ($item->amount ?? 0),
+                        'notes' => $item->description ?? '-',
+                    ];
+                });
+
+            // 3. Tarik statistik warga murni
+            $totalKk = (int) (Family::count() ?? 0);
+            $activePeriod = IuranPeriod::with('category')->latest()->first();
+            
+            $sudahBayarKk = 0;
+            $tariffPerKk = 150000;
+            $periodLabel = 'Oktober 2026';
+
+            if ($activePeriod) {
+                $periodLabel = $activePeriod->period_name ?? 'Periode Aktif';
+                if ($activePeriod->category) {
+                    $tariffPerKk = (float) ($activePeriod->category->default_amount ?? 150000);
+                }
+                
+                $sudahBayarKk = (int) IuranPayment::where('period_id', $activePeriod->period_id)
+                    ->where('amount_paid', '>', 0)
+                    ->distinct('family_id')
+                    ->count('family_id');
+            }
+
+            // 🌟 KUNCI: Bungkus data secara presisi sesuai dengan variabel yang dideklarasikan di Flutter
+            return response()->json([
+                'success' => true,
+                'message' => 'Data audit keuangan berhasil diproses.',
+                'data' => [
+                    'summary' => [
+                        'total_income'   => $totalIncome,
+                        'total_expense'  => $totalExpense,
+                        'current_balance'=> $currentBalance,
+                        'current_period_label' => $periodLabel,
+                        'generated_at'   => now()->format('d M Y'),
+                    ],
+                    'expenses' => $expensesList->toArray(), // Pastikan dikonversi ke array clean JSON
+                    'iuran_stats' => [
+                        'total_kk'       => $totalKk,
+                        'sudah_bayar_kk' => $sudahBayarKk,
+                        'tariff_per_kk'  => $tariffPerKk,
+                        'total_collected'=> $totalIncome,
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses data audit: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     private function uploadReceipt(Request $request): string

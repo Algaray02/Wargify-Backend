@@ -20,6 +20,11 @@ class Family extends Model
         'qr_code_data',
     ];
 
+    public function headOfFamily()
+    {
+        return $this->belongsTo(User::class, 'head_of_family_id', 'user_id');
+    }
+    
     // Relasi: Satu Keluarga punya banyak Warga (Users)
     public function members()
     {

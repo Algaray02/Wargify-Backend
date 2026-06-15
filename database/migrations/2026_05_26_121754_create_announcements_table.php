@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('announcement_id')->primary();
             $table->string('title');
             $table->text('content');
+            $table->string('category')->default('HIMMBAUAN');
             $table->string('banner_url')->nullable();
             $table->string('status')->default('draft'); //draft, published
             $table->uuid('created_by');
