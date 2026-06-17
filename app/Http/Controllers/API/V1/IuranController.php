@@ -258,41 +258,103 @@ class IuranController extends Controller
     //     ]);
     // }
 
+    // public function checkArrears(Request $request): JsonResponse
+    // {
+    //     // 1. Validasi pastikan string QR Code terdaftar di database tabel families
+    //     $validated = $request->validate([
+    //         'qr_code_data' => 'required|exists:families,qr_code_data',
+    //     ]);
+
+    //     // 🌟 KUNCI PERBAIKAN: Cari data keluarga asli berdasarkan string QR Code
+    //     $family = \App\Models\Family::where('qr_code_data', $validated['qr_code_data'])->firstOrFail();
+        
+    //     // Sekarang kita punya dua variabel yang presisi
+    //     $familyId = $family->family_id; // UUID Asli untuk query database
+    //     $qrCodeData = $family->qr_code_data; // Teks QR-FAM-xxxx untuk dilempar balik ke UI Flutter
+
+    //     // 2. Ambil semua komponen periode iuran yang aktif dari manajemen RT
+    //     $allPeriods = IuranPeriod::with('category')->get();
+
+    //     // 3. Ambil ID Periode yang BENAR-BENAR SUDAH DIBAYAR oleh keluarga ini (Pakai UUID familyId)
+    //     $paidPeriodIds = IuranPayment::where('family_id', $familyId)
+    //         ->where('amount_paid', '>', 0)
+    //         ->pluck('period_id')
+    //         ->toArray();
+
+    //     // 4. Ambil tarif khusus kustom keluarga jika ada (Pakai UUID familyId)
+    //     $customTariffs = FamilyIuranTariff::where('family_id', $familyId)
+    //         ->pluck('amount', 'category_id');
+
+    //     $arrearsDetails = [];
+    //     $totalOutstanding = 0;
+
+    //     // 5. Looping untuk menjabarkan komponen apa saja yang menunggak
+    //     foreach ($allPeriods as $period) {
+    //         if (!in_array($period->period_id, $paidPeriodIds)) {
+                
+    //             // Gunakan tarif kustom keluarga jika ada, jika tidak pakai tarif standar bawaan kategori
+    //             $tariffAmount = (float) ($customTariffs->get($period->category_id) ?? $period->category->default_amount);
+
+    //             $arrearsDetails[] = [
+    //                 'period_id'     => $period->period_id,
+    //                 'period_name'   => $period->period_name,
+    //                 'category_name' => $period->category->name,
+    //                 'amount'        => $tariffAmount,
+    //             ];
+
+    //             $totalOutstanding += $tariffAmount;
+    //         }
+    //     }
+
+    //     // 6. Kembalikan respon json ter-struktur rapi ke Flutter
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Tunggakan iuran keluarga berhasil dihitung secara presisi.',
+    //         'data'    => [
+    //             'family_id'         => $familyId, // UUID Asli (Biar di Flutter fungsi _processDirectPayment tidak crash)
+    //             'qr_code_data'      => $qrCodeData, // String QR-FAM-xxxx
+    //             'total_outstanding' => $totalOutstanding,
+    //             'details'           => $arrearsDetails
+    //         ]
+    //     ]);
+    // }
+
+    /**
+     * Memeriksa daftar tunggakan iuran keluarga langsung berdasarkan family_id (UUID).
+     * POST /api/v1/iuran/check-arrears
+     */
     public function checkArrears(Request $request): JsonResponse
     {
-        // 1. Validasi pastikan string QR Code terdaftar di database tabel families
         $validated = $request->validate([
-            'qr_code_data' => 'required|exists:families,qr_code_data',
+            'family_id' => 'required|uuid',
         ]);
 
-        // 🌟 KUNCI PERBAIKAN: Cari data keluarga asli berdasarkan string QR Code
-        $family = \App\Models\Family::where('qr_code_data', $validated['qr_code_data'])->firstOrFail();
+        $familyId = $validated['family_id'];
+
+        // 🌟 Gunakan backslash lengkap \App\Models\ agar PHP tidak tersesat
+        $family = \App\Models\Family::where('family_id', $familyId)->first();
         
-        // Sekarang kita punya dua variabel yang presisi
-        $familyId = $family->family_id; // UUID Asli untuk query database
-        $qrCodeData = $family->qr_code_data; // Teks QR-FAM-xxxx untuk dilempar balik ke UI Flutter
+        if (!$family) {
+            $qrCodeData = 'QR-FAM-DEMO';
+        } else {
+            $qrCodeData = $family->qr_code_data;
+        }
 
-        // 2. Ambil semua komponen periode iuran yang aktif dari manajemen RT
-        $allPeriods = IuranPeriod::with('category')->get();
+        $allPeriods = \App\Models\IuranPeriod::with('category')->get();
 
-        // 3. Ambil ID Periode yang BENAR-BENAR SUDAH DIBAYAR oleh keluarga ini (Pakai UUID familyId)
-        $paidPeriodIds = IuranPayment::where('family_id', $familyId)
+        $paidPeriodIds = \App\Models\IuranPayment::where('family_id', $familyId)
             ->where('amount_paid', '>', 0)
             ->pluck('period_id')
             ->toArray();
 
-        // 4. Ambil tarif khusus kustom keluarga jika ada (Pakai UUID familyId)
-        $customTariffs = FamilyIuranTariff::where('family_id', $familyId)
+        $customTariffs = \App\Models\FamilyIuranTariff::where('family_id', $familyId)
             ->pluck('amount', 'category_id');
 
         $arrearsDetails = [];
         $totalOutstanding = 0;
 
-        // 5. Looping untuk menjabarkan komponen apa saja yang menunggak
         foreach ($allPeriods as $period) {
             if (!in_array($period->period_id, $paidPeriodIds)) {
-                
-                // Gunakan tarif kustom keluarga jika ada, jika tidak pakai tarif standar bawaan kategori
                 $tariffAmount = (float) ($customTariffs->get($period->category_id) ?? $period->category->default_amount);
 
                 $arrearsDetails[] = [
@@ -303,16 +365,15 @@ class IuranController extends Controller
                 ];
 
                 $totalOutstanding += $tariffAmount;
-            }
+              }
         }
 
-        // 6. Kembalikan respon json ter-struktur rapi ke Flutter
         return response()->json([
             'success' => true,
             'message' => 'Tunggakan iuran keluarga berhasil dihitung secara presisi.',
             'data'    => [
-                'family_id'         => $familyId, // UUID Asli (Biar di Flutter fungsi _processDirectPayment tidak crash)
-                'qr_code_data'      => $qrCodeData, // String QR-FAM-xxxx
+                'family_id'         => $familyId,
+                'qr_code_data'      => $qrCodeData,
                 'total_outstanding' => $totalOutstanding,
                 'details'           => $arrearsDetails
             ]
