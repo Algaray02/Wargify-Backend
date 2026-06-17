@@ -5,6 +5,8 @@ RUN apt-get update \
     && docker-php-ext-install pdo_pgsql pcntl bcmath \
     && rm -rf /var/lib/apt/lists/*
 
+COPY docker/php-upload.ini /usr/local/etc/php/conf.d/uploads.ini
+
 WORKDIR /var/www/html
 
 COPY . .

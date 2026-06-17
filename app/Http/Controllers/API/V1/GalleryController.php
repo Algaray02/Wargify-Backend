@@ -182,6 +182,6 @@ class GalleryController extends Controller
             abort(500, 'Gagal mengunggah foto galeri ke Supabase Storage.');
         }
 
-        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
+        return app(SupabaseStorageService::class)->publicUrl($bucket, $path);
     }
 }

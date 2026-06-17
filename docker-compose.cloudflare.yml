@@ -8,14 +8,21 @@ services:
     env_file:
       - .env
     environment:
-      APP_ENV: production
+      APP_ENV: development
       APP_DEBUG: "false"
       APP_URL: https://wargify.algaray.dev
       LOG_CHANNEL: stderr
+      DATABASE_URL: postgresql://postgres:postgres@supabase_db_wargify-backend:5432/postgres
+      SUPABASE_URL: http://supabase_kong_wargify-backend:8000
+      SUPABASE_PUBLIC_URL: https://wargify.algaray.dev/api/v1/storage
+      # DATABASE_URL: "postgresql://postgres.zvfcefvvgofyrztfembw:w3seJDhD2G0fMArv@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+      # SUPABASE_URL: https://zvfcefvvgofyrztfembw.supabase.co
+      # SUPABASE_PUBLIC_URL: =https://zvfcefvvgofyrztfembw.supabase.co/storage/v1/object/public
     ports:
       - "127.0.0.1:8081:8000"
     networks:
       - cloudflare
+      - supabase
 
   wargify_queue:
     image: wargify-backend:latest
@@ -28,14 +35,21 @@ services:
     env_file:
       - .env
     environment:
-      APP_ENV: production
+      APP_ENV: development
       APP_DEBUG: "false"
       APP_URL: https://wargify.algaray.dev
       LOG_CHANNEL: stderr
+      DATABASE_URL: postgresql://postgres:postgres@supabase_db_wargify-backend:5432/postgres
+      SUPABASE_URL: http://supabase_kong_wargify-backend:8000
+      SUPABASE_PUBLIC_URL: https://wargify.algaray.dev/api/v1/storage
     command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
     networks:
       - cloudflare
+      - supabase
 
 networks:
   cloudflare:
     external: true
+  supabase:
+    external: true
+    name: supabase_network_wargify-backend

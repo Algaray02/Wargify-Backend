@@ -23,7 +23,7 @@ class RondaController extends Controller
     {
         $this->syncMissingCheckpointsForAllSchedules();
 
-        $schedules = RondaSchedule::with(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'rondaLog'])
+        $schedules = RondaSchedule::with(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'checkpointLogs.scanner', 'rondaLog'])
             ->get()
             ->sortBy(fn (RondaSchedule $schedule) => Carbon::parse($schedule->schedule_date)->isoWeekday())
             ->values();
@@ -181,7 +181,7 @@ class RondaController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Jadwal ronda berhasil dibuat',
-            'data' => $schedule->load(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'rondaLog'])
+            'data' => $schedule->load(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'checkpointLogs.scanner', 'rondaLog'])
         ], 201);
     }
 
@@ -210,7 +210,7 @@ class RondaController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Jadwal ronda berhasil diperbarui',
-            'data' => $schedule->fresh(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'rondaLog'])
+            'data' => $schedule->fresh(['group.members', 'coordinator', 'checkpoints', 'attendances', 'checkpointLogs.checkpoint', 'checkpointLogs.scanner', 'rondaLog'])
         ]);
     }
 

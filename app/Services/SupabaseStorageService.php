@@ -7,6 +7,37 @@ use Illuminate\Support\Facades\Log;
 
 class SupabaseStorageService
 {
+    public function publicUrl(string $bucket, string $path): string
+    {
+        $baseUrl = rtrim((string) config('services.supabase.public_url'), '/');
+        $encodedBucket = rawurlencode($bucket);
+        $encodedPath = collect(explode('/', $path))
+            ->map(fn (string $segment) => rawurlencode($segment))
+            ->implode('/');
+
+        return "{$baseUrl}/{$encodedBucket}/{$encodedPath}";
+    }
+
+    public function normalizePublicUrl(?string $publicUrl): ?string
+    {
+        if (blank($publicUrl)) {
+            return $publicUrl;
+        }
+
+        $object = $this->extractObjectPath($publicUrl);
+
+        if (!$object) {
+            return $publicUrl;
+        }
+
+        return $this->publicUrl(
+            rawurldecode($object['bucket']),
+            collect(explode('/', $object['path']))
+                ->map(fn (string $segment) => rawurldecode($segment))
+                ->implode('/')
+        );
+    }
+
     public function deletePublicUrl(?string $publicUrl): void
     {
         if (blank($publicUrl)) {
@@ -60,13 +91,17 @@ class SupabaseStorageService
             return null;
         }
 
-        $prefix = '/storage/v1/object/public/';
+        $supabasePrefix = '/storage/v1/object/public/';
+        $proxyPrefix = '/api/v1/storage/';
 
-        if (!str_starts_with($path, $prefix)) {
+        if (str_contains($path, $supabasePrefix)) {
+            $relativePath = substr($path, strpos($path, $supabasePrefix) + strlen($supabasePrefix));
+        } elseif (str_contains($path, $proxyPrefix)) {
+            $relativePath = substr($path, strpos($path, $proxyPrefix) + strlen($proxyPrefix));
+        } else {
             return null;
         }
 
-        $relativePath = substr($path, strlen($prefix));
         $segments = explode('/', $relativePath, 2);
 
         if (count($segments) !== 2 || blank($segments[0]) || blank($segments[1])) {

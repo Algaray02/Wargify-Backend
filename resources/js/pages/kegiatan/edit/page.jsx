@@ -179,7 +179,7 @@ export default function EditKegiatanPage() {
     };
 
     const isMeeting = form.type === 'RAPAT';
-    const qrValue = isMeeting && selectedHousehold ? selectedHousehold.qr_code_data : activity?.attendance_qr_code;
+    const qrValue = activity?.attendance_qr_code;
     const presentUsers = participants?.warga ?? activity?.participants ?? [];
     const inviteableUsers = users.filter((user) => ['WARGA', 'KETUA_RT', 'BENDAHARA'].includes(user.role));
     const filteredInviteableUsers = inviteableUsers.filter((user) => {

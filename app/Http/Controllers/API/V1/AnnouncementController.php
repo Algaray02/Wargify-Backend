@@ -18,7 +18,6 @@ class AnnouncementController extends Controller
      * GET /api/v1/announcements
      */
     public function index(Request $request): JsonResponse
-    public function index(Request $request): JsonResponse
     {
         $query = Announcement::with([
                 'creator:user_id,full_name',
@@ -43,8 +42,7 @@ class AnnouncementController extends Controller
             'success' => true,
             'message' => 'Daftar pengumuman berhasil diambil.',
             'data'    => $query->get()
-            'data'    => $query->get()
-        ]);
+        ]); 
     }
 
     /**
@@ -188,6 +186,6 @@ class AnnouncementController extends Controller
             abort(500, 'Gagal mengunggah banner pengumuman ke Supabase Storage.');
         }
 
-        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
+        return app(SupabaseStorageService::class)->publicUrl($bucket, $path);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SupabaseStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,11 @@ class TreasuryLog extends Model
         'receipt_url', // Path foto nota/bukti transaksi
         'recorded_by', // ID User (Bendahara) yang menginput
     ];
+
+    public function getReceiptUrlAttribute(?string $value): ?string
+    {
+        return app(SupabaseStorageService::class)->normalizePublicUrl($value);
+    }
 
     /**
      * Relasi ke user yang mencatat transaksi (Bendahara).

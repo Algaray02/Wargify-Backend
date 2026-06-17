@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\CitizenGroupController;
 use App\Http\Controllers\API\V1\FacilityReportController;
 use App\Http\Controllers\API\V1\EmergencyAlertController;
 use App\Http\Controllers\API\V1\GalleryController;
+use App\Http\Controllers\API\V1\PublicStorageController;
 use App\Http\Controllers\API\V1\QrScanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,9 @@ Route::get('/documentation/openapi.json', function () {
 // Public Routes (Bisa diakses tanpa login)
 Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/storage/{bucket}/{path}', [PublicStorageController::class, 'show'])
+        ->where('path', '.*')
+        ->name('storage.public');
     
     // Protected Routes (Wajib Login / Bearer Token Sanctum)
     Route::middleware('auth:sanctum')->group(function () {
@@ -101,15 +105,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/ronda/groups/{id}/members', [RondaController::class, 'addGroupMember']);
             Route::post('/ronda/schedules', [RondaController::class, 'storeSchedule']);
             Route::patch('/ronda/schedules/{id}', [RondaController::class, 'updateSchedule']);
-            Route::post('/ronda/schedules/{id}/checkpoint-logs', [RondaController::class, 'storeCheckpointLog']);
             Route::post('/ronda/schedules/{id}/logs', [RondaController::class, 'storeRondaLog']);
             Route::get('/ronda/checkpoints', [RondaController::class, 'checkpoints']);
             Route::post('/ronda/checkpoints', [RondaController::class, 'storeCheckpoint']);
             Route::patch('/ronda/checkpoints/{id}', [RondaController::class, 'updateCheckpoint']);
             Route::delete('/ronda/checkpoints/{id}', [RondaController::class, 'destroyCheckpoint']);
-        });
-        Route::get('/ronda/schedules', [RondaController::class, 'index']);      // Akses Umum
-        Route::post('/ronda/attendance', [RondaController::class, 'attendance']); // Akses Umum
+            });
+            Route::get('/ronda/schedules', [RondaController::class, 'index']);      // Akses Umum
+            Route::post('/ronda/attendance', [RondaController::class, 'attendance']); // Akses Umum
+            Route::post('/ronda/schedules/{id}/checkpoint-logs', [RondaController::class, 'storeCheckpointLog']);
 
         // =====================================================
         // 7. MODUL KEGIATAN
@@ -141,10 +145,10 @@ Route::prefix('v1')->group(function () {
         // 9. MODUL FASILITAS / LAPORAN WARGA
         // =====================================================
         Route::middleware('role:SUPERADMIN,KETUA_RT')->group(function () {
-            Route::get('/facility-reports', [FacilityReportController::class, 'index']);
             Route::patch('/facility-reports/{id}/status', [FacilityReportController::class, 'updateStatus']);
             Route::patch('/facility-reports/{id}/response', [FacilityReportController::class, 'respond']);
-        });
+            });
+        Route::get('/facility-reports', [FacilityReportController::class, 'index']);
         Route::post('/facility-reports', [FacilityReportController::class, 'store']); // Akses Warga
 
         // =====================================================

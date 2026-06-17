@@ -1,0 +1,2 @@
+-- Data aplikasi dikelola oleh Laravel:
+-- php artisan migrate:fresh --seed

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SupabaseStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,16 @@ class FacilityReport extends Model
         'response_message',
         'resolved_photo_url',
     ];
+
+    public function getImageUrlAttribute(?string $value): ?string
+    {
+        return app(SupabaseStorageService::class)->normalizePublicUrl($value);
+    }
+
+    public function getResolvedPhotoUrlAttribute(?string $value): ?string
+    {
+        return app(SupabaseStorageService::class)->normalizePublicUrl($value);
+    }
 
     /**
      * Relasi ke warga yang membuat laporan.

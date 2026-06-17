@@ -37,6 +37,10 @@ return [
 
     'supabase' => [
         'url' => env('SUPABASE_URL'),
+        'public_url' => env(
+            'SUPABASE_PUBLIC_URL',
+            rtrim(env('APP_URL', 'http://localhost'), '/').'/api/v1/storage'
+        ),
         'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
         'buckets' => [
             'profile' => env('SUPABASE_PROFILE_BUCKET', 'profile-pictures'),

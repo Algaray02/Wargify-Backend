@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SupabaseStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids; // Untuk Handle UUID Otomatis
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes; // Sesuai migrasi kita kemarin
@@ -50,6 +51,11 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
         ];
+    }
+
+    public function getProfilePictureUrlAttribute(?string $value): ?string
+    {
+        return app(SupabaseStorageService::class)->normalizePublicUrl($value);
     }
 
     public function family()

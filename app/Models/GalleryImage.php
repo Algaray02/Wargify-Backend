@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SupabaseStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,11 @@ class GalleryImage extends Model
     protected $keyType = 'string';
 
     protected $fillable = ['gallery_id', 'image_url'];
+
+    public function getImageUrlAttribute(?string $value): ?string
+    {
+        return app(SupabaseStorageService::class)->normalizePublicUrl($value);
+    }
 
     public function gallery(): BelongsTo
     {

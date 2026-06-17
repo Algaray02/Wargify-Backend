@@ -67,7 +67,6 @@ class EmergencyAlertController extends Controller
     public function resolve($id): JsonResponse
     {
         $alert = EmergencyAlert::with('sender:user_id,full_name,phone_number')->findOrFail($id);
-        $alert = EmergencyAlert::with('sender:user_id,full_name,phone_number')->findOrFail($id);
 
         if ($alert->status === 'RESOLVED') {
             return response()->json([
@@ -84,7 +83,6 @@ class EmergencyAlertController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Peringatan darurat berhasil dinonaktifkan. Keadaan dinyatakan aman.',
-            'data'    => $alert->fresh('sender:user_id,full_name,phone_number')
             'data'    => $alert->fresh('sender:user_id,full_name,phone_number')
         ]);
     }

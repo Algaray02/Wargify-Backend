@@ -280,10 +280,6 @@ class ActivityController extends Controller
             return null;
         }
 
-        if (!empty($data['household_id'])) {
-            return Household::findOrFail($data['household_id'])->qr_code_data;
-        }
-
         return $activity?->attendance_qr_code ?: 'QR-ACT-' . (string) Str::uuid();
     }
 
