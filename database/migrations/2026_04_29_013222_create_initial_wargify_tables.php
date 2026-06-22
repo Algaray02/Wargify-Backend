@@ -55,6 +55,7 @@ return new class extends Migration {
         Schema::create('iuran_categories', function (Blueprint $table) {
             $table->uuid('category_id')->primary();
             $table->string('name'); // Contoh: 'Iuran Keamanan', 'Iuran Kebersihan', 'Iuran Kematian'
+            $table->string('slug')->unique(); // Untuk URL friendly, misal 'iuran-keamanan'
             $table->enum('type', ['MONTHLY', 'INCIDENTAL'])->default('MONTHLY');
             $table->decimal('default_amount', 15, 2); // Tarif dasar jika keluarga tidak punya tarif khusus
             $table->timestamps();
