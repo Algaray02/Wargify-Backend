@@ -167,7 +167,11 @@ class TreasuryController extends Controller
                 });
 
             // 3. Tarik statistik warga murni
-            $totalKk = (int) (Family::count() ?? 0);
+            $totalKk = (int) \Illuminate\Support\Facades\DB::table('families')
+                ->join('users as heads', 'families.head_of_family_id', '=', 'heads.user_id')
+                ->where('heads.role', 'WARGA')
+                ->whereNull('heads.deleted_at')
+                ->count('families.family_id');
             $activePeriod = IuranPeriod::with('category')->latest()->first();
 
             $sudahBayarKk = 0;
