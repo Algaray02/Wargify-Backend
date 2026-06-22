@@ -9,6 +9,8 @@ const getLogs = async (type) => {
 
 const getSummary = async () => unwrap(await api.get('/api/v1/treasury-summary'));
 
+const getAuditSummary = async () => unwrap(await api.get('/api/v1/treasury-audit-summary'));
+
 const toLogFormData = (payload) => {
     const formData = new FormData();
 
@@ -39,6 +41,7 @@ const deleteLog = async (logId) => unwrap(await api.delete(`/api/v1/treasury-log
 export const treasuryService = {
     getLogs,
     getSummary,
+    getAuditSummary,
     createLog,
     updateLog,
     deleteLog,

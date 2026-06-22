@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/error-message';
 export const treasuryKeys = {
     logs: (type = 'ALL') => ['treasury', 'logs', type],
     summary: ['treasury', 'summary'],
+    auditSummary: ['treasury', 'audit-summary'],
 };
 
 export const useTreasuryLogs = (type = 'ALL') => {
@@ -19,6 +20,13 @@ export const useTreasurySummary = () => {
     return useQuery({
         queryKey: treasuryKeys.summary,
         queryFn: treasuryService.getSummary,
+    });
+};
+
+export const useTreasuryAuditSummary = () => {
+    return useQuery({
+        queryKey: treasuryKeys.auditSummary,
+        queryFn: treasuryService.getAuditSummary,
     });
 };
 

@@ -14,6 +14,8 @@ const deletePeriod = async (periodId) => unwrap(await api.delete(`/api/v1/iuran-
 
 const createPayment = async (payload) => unwrap(await api.post('/api/v1/iuran-payments', payload));
 
+const processPayments = async (payload) => unwrap(await api.post('/api/v1/iuran/process-payments', payload));
+
 const updatePayment = async (paymentId, payload) => unwrap(await api.patch(`/api/v1/iuran-payments/${paymentId}`, payload));
 
 const deletePayment = async (paymentId) => unwrap(await api.delete(`/api/v1/iuran-payments/${paymentId}`));
@@ -25,6 +27,7 @@ export const iuranService = {
     updatePeriod,
     deletePeriod,
     createPayment,
+    processPayments,
     updatePayment,
     deletePayment,
 };

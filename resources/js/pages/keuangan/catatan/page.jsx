@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ImageIcon, Pencil, Plus, ReceiptText, Search, Trash2 } from 'lucide-react';
+import { CalendarClock, ImageIcon, Pencil, Plus, ReceiptText, Search, Trash2, Users, WalletCards } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,7 @@ import { usePagination } from '@/hooks/usePagination';
 import {
     useCreateTreasuryLog,
     useDeleteTreasuryLog,
+    useTreasuryAuditSummary,
     useTreasuryLogs,
     useTreasurySummary,
     useUpdateTreasuryLog,
@@ -107,6 +108,7 @@ export default function CatatanKeuanganPage() {
     const [form, setForm] = useState(initialForm);
     const { data: logs = [], isLoading, isError } = useTreasuryLogs(typeFilter);
     const { data: summary } = useTreasurySummary();
+    const { data: auditSummary } = useTreasuryAuditSummary();
     const createLog = useCreateTreasuryLog();
     const updateLog = useUpdateTreasuryLog();
     const deleteLog = useDeleteTreasuryLog();
@@ -126,6 +128,8 @@ export default function CatatanKeuanganPage() {
     const pagination = usePagination(filteredLogs, 10);
     const isMutating = createLog.isPending || updateLog.isPending || deleteLog.isPending;
     const selectedFilterLabel = typeOptions.find((option) => option.value === typeFilter)?.label ?? 'Semua transaksi';
+    const audit = auditSummary?.summary;
+    const iuranStats = auditSummary?.iuran_stats;
 
     const updateForm = (field, value) => {
         setForm((current) => {
@@ -235,6 +239,54 @@ export default function CatatanKeuanganPage() {
                     <div className="rounded-lg border bg-white p-4">
                         <p className="text-sm font-semibold text-slate-500">Total Pengeluaran</p>
                         <p className="mt-1 text-2xl font-black text-red-700">{formatCurrency(summary?.total_expense)}</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+                    <div className="rounded-lg border bg-[#00468B] p-5 text-white shadow-sm">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-semibold text-blue-100">Audit bendahara</p>
+                                <h2 className="mt-1 text-2xl font-black !text-white">{audit?.current_period_label ?? 'Belum ada periode aktif'}</h2>
+                            </div>
+                            <CalendarClock className="size-10 rounded-xl bg-white/15 p-2" />
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-lg bg-white/10 p-3">
+                                <p className="text-xs text-blue-100">Saldo audit</p>
+                                <p className="mt-1 font-bold">{formatCurrency(audit?.current_balance)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white/10 p-3">
+                                <p className="text-xs text-blue-100">Pemasukan</p>
+                                <p className="mt-1 font-bold">{formatCurrency(audit?.total_income)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white/10 p-3">
+                                <p className="text-xs text-blue-100">Pengeluaran</p>
+                                <p className="mt-1 font-bold">{formatCurrency(audit?.total_expense)}</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-xs text-blue-100">Diperbarui {audit?.generated_at ?? '-'}</p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                        <div className="rounded-lg border bg-white p-4">
+                            <div className="flex items-center gap-3">
+                                <Users className="size-9 rounded-lg bg-emerald-50 p-2 text-emerald-700" />
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-500">KK sudah bayar</p>
+                                    <p className="text-2xl font-black text-slate-950">{iuranStats?.sudah_bayar_kk ?? 0}/{iuranStats?.total_kk ?? 0}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="rounded-lg border bg-white p-4">
+                            <div className="flex items-center gap-3">
+                                <WalletCards className="size-9 rounded-lg bg-blue-50 p-2 text-blue-700" />
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-500">Tarif periode aktif</p>
+                                    <p className="text-2xl font-black text-slate-950">{formatCurrency(iuranStats?.tariff_per_kk)}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

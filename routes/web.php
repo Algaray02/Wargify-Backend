@@ -41,6 +41,7 @@ Route::middleware(EnsureSanctumPageAuthenticated::class)->group(function () {
     Route::inertia('/keuangan/iuran', 'keuangan/iuran/page');
     Route::inertia('/keuangan/iuran/create', 'keuangan/iuran/create/page');
     Route::inertia('/keuangan/iuran/edit', 'keuangan/iuran/edit/page');
+    Route::inertia('/keuangan/iuran/kategori', 'keuangan/iuran/kategori/page');
 
     // Ronda
     Route::inertia('/ronda/jadwal', 'ronda/jadwal/page');

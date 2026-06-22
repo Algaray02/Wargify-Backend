@@ -18,6 +18,7 @@ class IuranCategory extends Model
 
     protected $fillable = [
         'name',
+        'slug',
         'type', // MONTHLY atau INCIDENTAL
         'default_amount', // Tarif dasar standar warga
     ];

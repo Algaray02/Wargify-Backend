@@ -25,7 +25,25 @@ class IuranController extends Controller
      */
     public function indexPeriod(): JsonResponse
     {
-        $periods = IuranPeriod::with('category')->latest()->get();
+        $targetFamiliesCount = DB::table('users')
+            ->where('role', 'WARGA')
+            ->whereNotNull('family_id')
+            ->whereNull('deleted_at')
+            ->distinct('family_id')
+            ->count('family_id');
+
+        $paidCounts = IuranPayment::query()
+            ->select('period_id', DB::raw('count(distinct family_id) as paid_count'))
+            ->where('amount_paid', '>', 0)
+            ->groupBy('period_id')
+            ->pluck('paid_count', 'period_id');
+
+        $periods = IuranPeriod::with('category')->latest()->get()
+            ->map(function (IuranPeriod $period) use ($targetFamiliesCount, $paidCounts) {
+                $period->target_families_count = $targetFamiliesCount;
+                $period->paid_payments_count = (int) ($paidCounts[$period->period_id] ?? 0);
+                return $period;
+            });
 
         return response()->json([
             'success' => true,
@@ -407,6 +425,7 @@ class IuranController extends Controller
                     'households.block_number',
                     'households.house_number'
                 ])
+                ->where('users.role', 'WARGA')
                 ->whereNull('users.deleted_at')
                 ->get()
                 ->groupBy('family_id')

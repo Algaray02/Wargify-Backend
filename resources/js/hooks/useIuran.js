@@ -89,6 +89,22 @@ export const useCreateIuranPayment = () => {
     });
 };
 
+export const useProcessIuranPayments = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: iuranService.processPayments,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['iuran'] });
+            queryClient.invalidateQueries({ queryKey: ['treasury'] });
+            toast.success('Pembayaran iuran berhasil diproses.');
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, 'Gagal memproses pembayaran iuran.'));
+        },
+    });
+};
+
 export const useUpdateIuranPayment = () => {
     const queryClient = useQueryClient();
 

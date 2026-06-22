@@ -183,27 +183,17 @@ class WargifySeeder extends Seeder
 
         // 5. IURAN CATEGORIES, PERIODS, TARIFFS & PAYMENTS (REVISI DOSEN)
         $catArisanId = Str::uuid();
-        $catKeamananId = Str::uuid();
-        $catKebersihanId = Str::uuid();
         $catSosialId = Str::uuid();
         $catLainnyaId = Str::uuid();
+        $catKebersihanId = Str::uuid();
+        $catKeamananId = Str::uuid();
 
         DB::table('iuran_categories')->insert([
-            [
-                'category_id' => $catArisanId, 'name' => 'Uang Kas Arisan', 'slug' => 'arisan', 'type' => 'MONTHLY', 'default_amount' => 20000.00, 'created_at' => now(), 'updated_at' => now()
-            ],
-            [
-                'category_id' => $catKebersihanId, 'name' => 'Kebersihan', 'slug' => 'kebersihan', 'type' => 'MONTHLY', 'default_amount' => 15000.00, 'created_at' => now(), 'updated_at' => now()
-            ],
-            [
-                'category_id' => $catKeamananId, 'name' => 'Keamanan', 'slug' => 'keamanan', 'type' => 'MONTHLY', 'default_amount' => 15000.00, 'created_at' => now(), 'updated_at' => now()
-            ],
-            [
-                'category_id' => $catSosialId, 'name' => 'Sosial', 'slug' => 'sosial', 'type' => 'MONTHLY', 'default_amount' => 10000.00, 'created_at' => now(), 'updated_at' => now()
-            ],
-            [
-                'category_id' => $catLainnyaId, 'name' => 'Lainnya', 'slug' => 'lainnya', 'type' => 'MONTHLY', 'default_amount' => 5000.00, 'created_at' => now(), 'updated_at' => now()
-            ]
+            ['category_id' => $catArisanId, 'name' => 'Uang Kas Arisan', 'slug' => 'arisan', 'type' => 'MONTHLY', 'default_amount' => 20000.00, 'created_at' => now(), 'updated_at' => now()],
+            ['category_id' => $catSosialId, 'name' => 'Sosial', 'slug' => 'sosial', 'type' => 'MONTHLY', 'default_amount' => 10000.00, 'created_at' => now(), 'updated_at' => now()],
+            ['category_id' => $catLainnyaId, 'name' => 'Lainnya', 'slug' => 'lainnya', 'type' => 'MONTHLY', 'default_amount' => 5000.00, 'created_at' => now(), 'updated_at' => now()],
+            ['category_id' => $catKebersihanId, 'name' => 'Kebersihan', 'slug' => 'kebersihan', 'type' => 'MONTHLY', 'default_amount' => 15000.00, 'created_at' => now(), 'updated_at' => now()],
+            ['category_id' => $catKeamananId, 'name' => 'Keamanan', 'slug' => 'keamanan', 'type' => 'MONTHLY', 'default_amount' => 15000.00, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $periodMeiKeamanan = Str::uuid();

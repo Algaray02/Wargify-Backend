@@ -6,6 +6,7 @@ use App\Http\Controllers\API\V1\RondaController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\HouseholdController;
 use App\Http\Controllers\API\V1\IuranController;
+use App\Http\Controllers\API\V1\IuranCategoryController;
 use App\Http\Controllers\API\V1\TreasuryController;
 use App\Http\Controllers\API\V1\ActivityController;
 use App\Http\Controllers\API\V1\AnnouncementController;
@@ -74,6 +75,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('role:SUPERADMIN,KETUA_RT,BENDAHARA')->group(function () {
             Route::post('/iuran-periods', [IuranController::class, 'storePeriod']);
             Route::get('/iuran-periods', [IuranController::class, 'indexPeriod']);
+            Route::apiResource('iuran-categories', IuranCategoryController::class)->except(['show']);
             Route::patch('/iuran-periods/{id}', [IuranController::class, 'updatePeriod']);
             Route::delete('/iuran-periods/{id}', [IuranController::class, 'destroyPeriod']);
             Route::post('/iuran/check-arrears', [IuranController::class, 'checkArrears']);

@@ -90,6 +90,7 @@ export default function DashboardLayout({ children }) {
             subItems: [
                 { name: 'Catatan', path: '/keuangan/catatan' },
                 { name: 'Iuran', path: '/keuangan/iuran' },
+                { name: 'Kategori Iuran', path: '/keuangan/iuran/kategori' },
             ]
         },
         { name: 'Fasilitas', path: '/fasilitas', icon: Building2 },

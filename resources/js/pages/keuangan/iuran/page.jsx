@@ -52,8 +52,10 @@ export default function DataIuranPage() {
     }, [periods, search]);
 
     const pagination = usePagination(filteredPeriods, 10);
-    const totalExpected = periods.reduce((sum, period) => sum + Number(period.amount_per_family ?? 0) * families.length, 0);
-    const totalPaidFamilies = periods.reduce((sum, period) => sum + Number(period.paid_payments_count ?? 0), 0);
+    const periodAmount = (period) => Number(period.category?.default_amount ?? 0);
+    const targetFamilies = (period) => Number(period.target_families_count ?? families.length ?? 0);
+    const totalExpected = periods.reduce((sum, period) => sum + periodAmount(period) * targetFamilies(period), 0);
+    const categoryCount = new Set(periods.map((period) => period.category_id).filter(Boolean)).size;
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
@@ -73,12 +75,17 @@ export default function DataIuranPage() {
                             Kelola periode iuran, QR pembayaran, dan checklist pembayaran keluarga.
                         </p>
                     </div>
-                    <Link href="/keuangan/iuran/create">
-                        <Button className="bg-[#00468B] text-white hover:bg-[#003366]">
-                            <Plus className="size-4" />
-                            Tambah Iuran
-                        </Button>
-                    </Link>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Link href="/keuangan/iuran/kategori">
+                            <Button variant="outline">Atur Kategori</Button>
+                        </Link>
+                        <Link href="/keuangan/iuran/create">
+                            <Button className="bg-[#00468B] text-white hover:bg-[#003366]">
+                                <Plus className="size-4" />
+                                Tambah Iuran
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
@@ -95,8 +102,8 @@ export default function DataIuranPage() {
                         <CardContent className="flex items-center gap-3">
                             <CheckCircle2 className="size-9 rounded-lg bg-emerald-50 p-2 text-emerald-700" />
                             <div>
-                                <p className="text-xs font-medium text-slate-500">Pembayaran tercatat</p>
-                                <p className="text-2xl font-semibold text-slate-900">{totalPaidFamilies}</p>
+                                <p className="text-xs font-medium text-slate-500">Komponen aktif</p>
+                                <p className="text-2xl font-semibold text-slate-900">{categoryCount}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -129,6 +136,7 @@ export default function DataIuranPage() {
                             <TableRow>
                                 <TableHead>Nama Iuran</TableHead>
                                 <TableHead>Periode</TableHead>
+                                <TableHead>Kategori</TableHead>
                                 <TableHead>Nominal per KK</TableHead>
                                 <TableHead>Progress</TableHead>
                                 <TableHead>QR Pembayaran</TableHead>
@@ -138,22 +146,22 @@ export default function DataIuranPage() {
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Memuat data iuran...</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Memuat data iuran...</TableCell>
                                 </TableRow>
                             )}
                             {isError && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-red-600">Gagal memuat data iuran.</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-red-600">Gagal memuat data iuran.</TableCell>
                                 </TableRow>
                             )}
                             {!isLoading && !isError && filteredPeriods.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-slate-500">Tidak ada data iuran.</TableCell>
+                                    <TableCell colSpan={7} className="py-8 text-center text-slate-500">Tidak ada data iuran.</TableCell>
                                 </TableRow>
                             )}
                             {pagination.paginatedItems.map((period) => {
                                 const paid = Number(period.paid_payments_count ?? 0);
-                                const total = families.length;
+                                const total = targetFamilies(period);
                                 const percentage = total ? Math.round((paid / total) * 100) : 0;
 
                                 return (
@@ -165,7 +173,8 @@ export default function DataIuranPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>{formatPeriod(period)}</TableCell>
-                                        <TableCell>{formatCurrency(period.amount_per_family)}</TableCell>
+                                        <TableCell>{period.category?.name ?? '-'}</TableCell>
+                                        <TableCell>{formatCurrency(periodAmount(period))}</TableCell>
                                         <TableCell>
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-2">
