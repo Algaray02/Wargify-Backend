@@ -6,7 +6,7 @@ services:
     container_name: wargify_backend
     restart: unless-stopped
     env_file:
-      - .env
+      - .env//
     environment:
       APP_ENV: development
       APP_DEBUG: "false"
