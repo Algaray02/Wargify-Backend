@@ -7,7 +7,6 @@ use App\Models\Family;
 use App\Models\IuranPayment;
 use App\Models\IuranPeriod;
 use App\Models\TreasuryLog;
-use App\Services\SupabaseStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -84,21 +83,11 @@ class TreasuryController extends Controller
 
         unset($validated['receipt_file']);
 
-        $oldReceiptUrl = $log->receipt_url;
-
         if ($request->hasFile('receipt_file')) {
             $validated['receipt_url'] = $this->uploadReceipt($request);
         }
 
         $log->update($validated);
-
-        if (
-            array_key_exists('receipt_url', $validated)
-            && filled($oldReceiptUrl)
-            && $oldReceiptUrl !== $validated['receipt_url']
-        ) {
-            app(SupabaseStorageService::class)->deletePublicUrl($oldReceiptUrl);
-        }
 
         return response()->json([
             'success' => true,
@@ -114,9 +103,7 @@ class TreasuryController extends Controller
     public function destroy($id): JsonResponse
     {
         $log = TreasuryLog::findOrFail($id);
-        $receiptUrl = $log->receipt_url;
         $log->delete();
-        app(SupabaseStorageService::class)->deletePublicUrl($receiptUrl);
 
         return response()->json([
             'success' => true,
@@ -167,16 +154,29 @@ class TreasuryController extends Controller
                 });
 
             // 3. Tarik statistik warga murni
-            $totalKk = (int) \Illuminate\Support\Facades\DB::table('families')
-                ->join('users as heads', 'families.head_of_family_id', '=', 'heads.user_id')
-                ->where('heads.role', 'WARGA')
-                ->whereNull('heads.deleted_at')
-                ->count('families.family_id');
+            $wargaFamilyFilter = fn ($query) => $query->whereRaw('LOWER(role) = ?', ['warga']);
+            $wargaFamilyIds = Family::whereHas('headOfFamily', $wargaFamilyFilter)->pluck('family_id');
+            $periodIds = IuranPeriod::pluck('period_id');
             $activePeriod = IuranPeriod::with('category')->latest()->first();
 
+            $totalKk = $wargaFamilyIds->count();
             $sudahBayarKk = 0;
+            $totalCollected = 0;
             $tariffPerKk = 150000;
             $periodLabel = 'Oktober 2026';
+
+            if ($periodIds->isNotEmpty() && $wargaFamilyIds->isNotEmpty()) {
+                $paidPeriodCounts = IuranPayment::whereIn('family_id', $wargaFamilyIds)
+                    ->whereIn('period_id', $periodIds)
+                    ->where('amount_paid', '>', 0)
+                    ->selectRaw('family_id, COUNT(DISTINCT period_id) as paid_period_count')
+                    ->groupBy('family_id')
+                    ->pluck('paid_period_count', 'family_id');
+
+                $sudahBayarKk = $wargaFamilyIds
+                    ->filter(fn ($familyId) => (int) ($paidPeriodCounts[$familyId] ?? 0) === $periodIds->count())
+                    ->count();
+            }
 
             if ($activePeriod) {
                 $periodLabel = $activePeriod->period_name ?? 'Periode Aktif';
@@ -184,10 +184,10 @@ class TreasuryController extends Controller
                     $tariffPerKk = (float) ($activePeriod->category->default_amount ?? 150000);
                 }
 
-                $sudahBayarKk = (int) IuranPayment::where('period_id', $activePeriod->period_id)
+                $totalCollected = (float) IuranPayment::where('period_id', $activePeriod->period_id)
+                    ->whereIn('family_id', $wargaFamilyIds)
                     ->where('amount_paid', '>', 0)
-                    ->distinct('family_id')
-                    ->count('family_id');
+                    ->sum('amount_paid');
             }
 
             // 🌟 KUNCI: Bungkus data secara presisi sesuai dengan variabel yang dideklarasikan di Flutter
@@ -207,7 +207,7 @@ class TreasuryController extends Controller
                         'total_kk'       => $totalKk,
                         'sudah_bayar_kk' => $sudahBayarKk,
                         'tariff_per_kk'  => $tariffPerKk,
-                        'total_collected'=> $totalIncome,
+                        'total_collected'=> $totalCollected,
                     ]
                 ]
             ]);
@@ -249,6 +249,6 @@ class TreasuryController extends Controller
             abort(500, 'Gagal mengunggah bukti kas ke Supabase Storage.');
         }
 
-        return app(SupabaseStorageService::class)->publicUrl($bucket, $path);
+        return "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$path}";
     }
 }

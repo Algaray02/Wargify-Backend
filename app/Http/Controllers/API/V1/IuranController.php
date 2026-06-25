@@ -21,24 +21,7 @@ class IuranController extends Controller
 {
     public function indexPeriod(): JsonResponse
     {
-        $targetFamiliesCount = DB::table('families')
-            ->join('users as heads', 'families.head_of_family_id', '=', 'heads.user_id')
-            ->where('heads.role', 'WARGA')
-            ->whereNull('heads.deleted_at')
-            ->count('families.family_id');
-
-        $paidCounts = IuranPayment::query()
-            ->select('period_id', DB::raw('count(distinct family_id) as paid_count'))
-            ->where('amount_paid', '>', 0)
-            ->groupBy('period_id')
-            ->pluck('paid_count', 'period_id');
-
-        $periods = IuranPeriod::with('category')->latest()->get()
-            ->map(function (IuranPeriod $period) use ($targetFamiliesCount, $paidCounts) {
-                $period->target_families_count = $targetFamiliesCount;
-                $period->paid_payments_count = (int) ($paidCounts[$period->period_id] ?? 0);
-                return $period;
-            });
+        $periods = IuranPeriod::with('category')->latest()->get();
 
         return response()->json([
             'success' => true,
@@ -54,8 +37,8 @@ class IuranController extends Controller
             'month'           => 'required|integer|between:1,12',
             'year'            => 'required|integer|min:2026',
             'duration_months' => 'required|integer|in:1,3',
-            'categories'      => 'required|array|min:1',
-            'categories.*'    => 'required|string|exists:iuran_categories,slug',
+            'categories'      => 'required|array|min:1', 
+            'categories.*'    => 'required|string|exists:iuran_categories,slug', 
         ]);
 
         $createdPeriods = [];
@@ -81,7 +64,7 @@ class IuranController extends Controller
 
                 foreach ($validated['categories'] as $categorySlug) {
                     $category = IuranCategory::where('slug', $categorySlug)->firstOrFail();
-
+                    
                     $periodLabel = $validated['period_name'] . ' (' . $monthsName[$currentMonth] . ' ' . $currentYear . ')';
                     $fullPeriodName = $periodLabel . ' - ' . $category->name;
                     $qrCode = 'QR-PAY-' . Str::upper(Str::slug($fullPeriodName));
@@ -123,8 +106,8 @@ class IuranController extends Controller
         // 4. KEMBALIKAN RESPON KE FLUTTER SECEPAT MUNGKIN
         return response()->json([
             'success' => true,
-            'message' => $validated['duration_months'] == 3
-                ? 'Periode iuran selama 3 bulan ke depan berhasil dibuka sekaligus.'
+            'message' => $validated['duration_months'] == 12 
+                ? 'Periode iuran selama 1 tahun ke depan berhasil dibuka sekaligus.' 
                 : 'Periode iuran bulan ini berhasil dibuka.',
             'data'    => $createdPeriods
         ], 201);
@@ -302,7 +285,7 @@ class IuranController extends Controller
                         'head_of_family_name' => $firstUser->head_name ?? 'Kepala KK',
                         'block_info' => "Blok " . ($firstUser->block_number ?? '-') . " / No. " . ($firstUser->house_number ?? '-'),
                         'is_paid_global' => !$hasUnpaid,
-                        'tagihan' => $tagihanList
+                        'tagihan' => $tagihanList 
                     ];
                 })->values();
 
@@ -344,7 +327,7 @@ class IuranController extends Controller
         try {
             foreach ($periodsToPay as $periodId) {
                 $period = IuranPeriod::with('category')->find($periodId);
-
+                
                 if ($period) {
                     $tariffAmount = (float) ($customTariffs->get($period->category_id) ?? $period->category->default_amount);
 
