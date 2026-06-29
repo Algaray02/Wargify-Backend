@@ -185,7 +185,18 @@ class IuranController extends Controller
             $qrCodeData = $family->qr_code_data;
         }
 
-        $allPeriods = IuranPeriod::with('category')->get();
+        [$eligibleMonth, $eligibleYear] = $family
+            ? $this->familyEligibleFrom($family)
+            : [1, 2000]; // fallback family not found: show all
+
+        $allPeriods = IuranPeriod::with('category')
+            ->where(function ($q) use ($eligibleYear, $eligibleMonth) {
+                $q->where('year', '>', $eligibleYear)
+                  ->orWhere(function ($q2) use ($eligibleYear, $eligibleMonth) {
+                      $q2->where('year', $eligibleYear)->where('month', '>=', $eligibleMonth);
+                  });
+            })
+            ->get();
 
         $paidPeriodIds = IuranPayment::where('family_id', $familyId)
             ->where('amount_paid', '>', 0)
@@ -248,6 +259,7 @@ class IuranController extends Controller
                     'users.full_name',
                     'users.family_id',
                     'families.head_of_family_id',
+                    'families.created_at as family_created_at',
                     'heads.full_name as head_name',
                     'households.block_number',
                     'households.house_number'
@@ -260,9 +272,15 @@ class IuranController extends Controller
                     $firstUser = $group->first();
                     $familyId = $firstUser->family_id;
                     $familyPayments = $paymentsLog->get($familyId) ?? collect([]);
+                    $familyCreatedAt = $firstUser->family_created_at ?? now();
+                    [$eligibleMonth, $eligibleYear] = $this->eligibleFromDate($familyCreatedAt);
 
                     // Strukturkan daftar komponen iuran untuk keluarga ini
-                    $tagihanList = $periods->map(function ($p) use ($familyPayments) {
+                    $tagihanList = $periods->filter(function ($p) use ($eligibleYear, $eligibleMonth) {
+                        if ($p->year > $eligibleYear) return true;
+                        if ($p->year == $eligibleYear && $p->month >= $eligibleMonth) return true;
+                        return false;
+                    })->map(function ($p) use ($familyPayments) {
                         $defaultAmount = (float) ($p->category->default_amount ?? 0);
                         $isPaid = $familyPayments->where('period_id', $p->period_id)->first() !== null;
 
@@ -474,7 +492,18 @@ class IuranController extends Controller
             ->get()
             ->keyBy('period_id');
 
+        $family = Family::where('family_id', $familyId)->first();
+        [$eligibleMonth, $eligibleYear] = $family
+            ? $this->familyEligibleFrom($family)
+            : [1, 2000];
+
         $iuranHistory = IuranPeriod::with('category')
+            ->where(function ($q) use ($eligibleYear, $eligibleMonth) {
+                $q->where('year', '>', $eligibleYear)
+                  ->orWhere(function ($q2) use ($eligibleYear, $eligibleMonth) {
+                      $q2->where('year', $eligibleYear)->where('month', '>=', $eligibleMonth);
+                  });
+            })
             ->orderByDesc('year')
             ->orderByDesc('month')
             ->get()
@@ -582,5 +611,24 @@ class IuranController extends Controller
         $categoryName = $period->category ? $period->category->name : 'Warga';
 
         return "Rekap pembayaran iuran {$categoryName} bulan {$month} {$period->year}";
+    }
+
+    private function familyEligibleFrom($family): array
+    {
+        $createdAt = $family->created_at ?? now();
+        return $this->eligibleFromDate($createdAt);
+    }
+
+    private function eligibleFromDate($date): array
+    {
+        $carbonDate = \Carbon\Carbon::parse($date);
+        $day = $carbonDate->day;
+
+        if ($day >= 16) {
+            $nextMonth = $carbonDate->copy()->addMonth();
+            return [(int) $nextMonth->month, (int) $nextMonth->year];
+        }
+
+        return [(int) $carbonDate->month, (int) $carbonDate->year];
     }
 }
