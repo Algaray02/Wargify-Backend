@@ -136,13 +136,22 @@ class TreasuryController extends Controller
     public function auditSummary(): JsonResponse
     {
         try {
+            $activePeriod = IuranPeriod::with('category')->latest()->first();
+
             // 1. Gunakan WHERE LOWER untuk mengamankan variasi teks 'income' / 'INCOME' di database
             $totalIncome = (float) (TreasuryLog::whereRaw('LOWER(type) = ?', ['income'])->sum('amount') ?? 0);
-            $totalExpense = (float) (TreasuryLog::whereRaw('LOWER(type) = ?', ['expense'])->sum('amount') ?? 0);
+            $expenseQuery = TreasuryLog::whereRaw('LOWER(type) = ?', ['expense']);
+
+            if ($activePeriod) {
+                $expenseQuery->whereMonth('created_at', $activePeriod->month)
+                    ->whereYear('created_at', $activePeriod->year);
+            }
+
+            $totalExpense = (float) ((clone $expenseQuery)->sum('amount') ?? 0);
             $currentBalance = $totalIncome - $totalExpense;
 
             // 2. Ambil list rincian pengeluaran dengan filter lower case
-            $expensesList = TreasuryLog::whereRaw('LOWER(type) = ?', ['expense'])
+            $expensesList = (clone $expenseQuery)
                 ->latest()
                 ->get()
                 ->map(function ($item) {
@@ -150,6 +159,7 @@ class TreasuryController extends Controller
                         'title' => $item->source ?? 'Pengeluaran Kas',
                         'amount' => (float) ($item->amount ?? 0),
                         'notes' => $item->description ?? '-',
+                        'created_at' => $item->created_at,
                     ];
                 });
 
@@ -157,8 +167,6 @@ class TreasuryController extends Controller
             $wargaFamilyFilter = fn ($query) => $query->whereRaw('LOWER(role) = ?', ['warga']);
             $wargaFamilyIds = Family::whereHas('headOfFamily', $wargaFamilyFilter)->pluck('family_id');
             $periodIds = IuranPeriod::pluck('period_id');
-            $activePeriod = IuranPeriod::with('category')->latest()->first();
-
             $totalKk = $wargaFamilyIds->count();
             $sudahBayarKk = 0;
             $totalCollected = 0;

@@ -23,7 +23,7 @@ class ActivityController extends Controller
         $query = Activity::with([
                 'creator:user_id,full_name',
                 'household:household_id,block_number,house_number,qr_code_data',
-                'targetGroups:citizen_groups.group_id,name',
+                'targetGroups.members:user_id,full_name,role,phone_number,profile_picture_url',
                 'invitedUsers:user_id,full_name,role',
             ])
             ->withCount(['participants', 'targetGroups', 'invitedUsers'])
