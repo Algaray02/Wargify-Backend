@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\SupabaseStorageService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,6 +16,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        app(SupabaseStorageService::class)->clearConfiguredBuckets();
+
         // User::factory(10)->create();
         $this->call([
             WargifySeeder::class,

@@ -17,6 +17,7 @@ class RondaAttendance extends Model
     protected $fillable = [
         'user_id',
         'schedule_id',
+        'session_date',
         'scanned_at',
     ];
 

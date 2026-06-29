@@ -147,6 +147,7 @@ return new class extends Migration {
         Schema::create('ronda_attendances', function (Blueprint $table) {
             $table->uuid('attendance_id')->primary();
             $table->foreignUuid('schedule_id')->constrained('ronda_schedules', 'schedule_id');
+            $table->date('session_date')->nullable()->index();
             $table->foreignUuid('user_id')->constrained('users', 'user_id');
             $table->timestamp('scanned_at');
             $table->timestamps();
@@ -155,6 +156,7 @@ return new class extends Migration {
         Schema::create('patrol_checkpoint_logs', function (Blueprint $table) {
             $table->uuid('log_id')->primary();
             $table->foreignUuid('schedule_id')->constrained('ronda_schedules', 'schedule_id');
+            $table->date('session_date')->nullable()->index();
             $table->foreignUuid('checkpoint_id')->constrained('checkpoints', 'checkpoint_id');
             $table->foreignUuid('scanned_by')->constrained('users', 'user_id');
             $table->timestamp('scanned_at');
@@ -164,6 +166,7 @@ return new class extends Migration {
         Schema::create('ronda_logs', function (Blueprint $table) {
             $table->uuid('log_id')->primary();
             $table->foreignUuid('schedule_id')->constrained('ronda_schedules', 'schedule_id');
+            $table->date('session_date')->nullable()->index();
             $table->json('path_data')->nullable();
             $table->decimal('distance_covered', 10, 2)->default(0);
             $table->integer('duration')->default(0);

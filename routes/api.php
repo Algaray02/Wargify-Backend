@@ -110,12 +110,14 @@ Route::prefix('v1')->group(function () {
             Route::patch('/ronda/groups/{id}', [RondaController::class, 'updateGroup']);
             Route::post('/ronda/groups/{id}/members', [RondaController::class, 'addGroupMember']);
             Route::post('/ronda/schedules', [RondaController::class, 'storeSchedule']);
-            Route::post('/ronda/schedules/{id}/logs', [RondaController::class, 'storeRondaLog']);
+            Route::get('/ronda/history', [RondaController::class, 'history']);
+            Route::get('/ronda/history/{id}', [RondaController::class, 'historyShow']);
             Route::post('/ronda/checkpoints', [RondaController::class, 'storeCheckpoint']);
             Route::delete('/ronda/checkpoints/{id}', [RondaController::class, 'destroyCheckpoint']);
             });
             Route::get('/ronda/schedules', [RondaController::class, 'index']);      // Akses Umum
             Route::patch('/ronda/schedules/{id}', [RondaController::class, 'updateSchedule']);
+            Route::post('/ronda/schedules/{id}/logs', [RondaController::class, 'storeRondaLog']);
             Route::get('/ronda/checkpoints', [RondaController::class, 'checkpoints']);
             Route::patch('/ronda/checkpoints/{id}', [RondaController::class, 'updateCheckpoint']);
             Route::post('/ronda/attendance', [RondaController::class, 'attendance']); // Akses Umum

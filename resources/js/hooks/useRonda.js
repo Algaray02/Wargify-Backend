@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/lib/error-message';
 
 export const rondaKeys = {
     schedules: ['ronda', 'schedules'],
+    history: ['ronda', 'history'],
     groups: ['ronda', 'groups'],
     checkpoints: ['ronda', 'checkpoints'],
 };
@@ -13,6 +14,21 @@ export const useRondaSchedules = () => {
     return useQuery({
         queryKey: rondaKeys.schedules,
         queryFn: rondaService.getSchedules,
+    });
+};
+
+export const useRondaHistory = () => {
+    return useQuery({
+        queryKey: rondaKeys.history,
+        queryFn: rondaService.getHistory,
+    });
+};
+
+export const useRondaHistoryDetail = (logId) => {
+    return useQuery({
+        queryKey: [...rondaKeys.history, logId],
+        queryFn: () => rondaService.getHistoryDetail(logId),
+        enabled: Boolean(logId),
     });
 };
 

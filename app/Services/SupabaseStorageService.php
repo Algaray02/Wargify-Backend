@@ -83,6 +83,75 @@ class SupabaseStorageService
         }
     }
 
+    public function clearConfiguredBuckets(): void
+    {
+        foreach (array_filter(config('services.supabase.buckets', [])) as $bucket) {
+            $this->clearBucket((string) $bucket);
+        }
+    }
+
+    private function clearBucket(string $bucket, string $prefix = ''): void
+    {
+        $supabaseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+
+        if (!$supabaseUrl || !$serviceRoleKey || blank($bucket)) {
+            return;
+        }
+
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$serviceRoleKey}",
+            'apikey' => $serviceRoleKey,
+        ])->post("{$supabaseUrl}/storage/v1/object/list/{$bucket}", [
+            'prefix' => $prefix,
+            'limit' => 1000,
+        ]);
+
+        if ($response->failed()) {
+            Log::warning('Failed listing Supabase storage bucket.', [
+                'bucket' => $bucket,
+                'prefix' => $prefix,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return;
+        }
+
+        $files = [];
+        foreach ($response->json() ?? [] as $item) {
+            $name = $item['name'] ?? null;
+            if (!$name) {
+                continue;
+            }
+
+            $path = ltrim($prefix . '/' . $name, '/');
+            if (($item['metadata'] ?? null) === null) {
+                $this->clearBucket($bucket, $path);
+            } else {
+                $files[] = $path;
+            }
+        }
+
+        if (empty($files)) {
+            return;
+        }
+
+        $deleteResponse = Http::withHeaders([
+            'Authorization' => "Bearer {$serviceRoleKey}",
+            'apikey' => $serviceRoleKey,
+        ])->send('DELETE', "{$supabaseUrl}/storage/v1/object/{$bucket}", [
+            'json' => ['prefixes' => $files],
+        ]);
+
+        if ($deleteResponse->failed()) {
+            Log::warning('Failed clearing Supabase storage bucket.', [
+                'bucket' => $bucket,
+                'status' => $deleteResponse->status(),
+                'body' => $deleteResponse->body(),
+            ]);
+        }
+    }
+
     private function extractObjectPath(string $publicUrl): ?array
     {
         $path = parse_url($publicUrl, PHP_URL_PATH);

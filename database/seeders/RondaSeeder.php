@@ -4,9 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Checkpoint;
-use App\Models\PatrolCheckpointLog;
 use App\Models\RondaGroup;
-use App\Models\RondaLog;
 use App\Models\RondaSchedule;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -77,24 +75,20 @@ class RondaSeeder extends Seeder
         }
 
         $checkpoints = collect([$posUtama, $gerbangBlokA, $tamanWarga]);
-        $completedSchedule = RondaSchedule::create([
-            'group_id' => $group->group_id,
-            'coordinator_id' => $coordinator->user_id,
-            'schedule_date' => now()->subDay()->toDateString(),
-            'shift_start' => Carbon::yesterday()->setTime(21, 0),
-            'shift_end' => Carbon::today()->setTime(0, 30),
-            'status' => 'COMPLETED',
-        ]);
-        $ongoingSchedule = RondaSchedule::create([
-            'group_id' => $group->group_id,
-            'coordinator_id' => $coordinator->user_id,
-            'schedule_date' => now()->toDateString(),
-            'shift_start' => Carbon::today()->setTime(21, 0),
-            'shift_end' => Carbon::tomorrow()->setTime(0, 30),
-            'status' => 'ONGOING',
-        ]);
+        $schedules = collect(range(1, 6))->map(function (int $offset) use ($group, $coordinator) {
+            $date = Carbon::today()->addDays($offset);
 
-        foreach ([$completedSchedule, $ongoingSchedule] as $schedule) {
+            return RondaSchedule::create([
+                'group_id' => $group->group_id,
+                'coordinator_id' => $coordinator->user_id,
+                'schedule_date' => $date->toDateString(),
+                'shift_start' => $date->copy()->setTime(21, 0),
+                'shift_end' => $date->copy()->addDay()->setTime(0, 30),
+                'status' => 'SCHEDULED',
+            ]);
+        });
+
+        foreach ($schedules as $schedule) {
             DB::table('schedule_checkpoints')->insert($checkpoints->map(fn (Checkpoint $checkpoint) => [
                 'id' => (string) Str::uuid(),
                 'schedule_id' => $schedule->schedule_id,
@@ -103,54 +97,5 @@ class RondaSeeder extends Seeder
                 'updated_at' => now(),
             ])->all());
         }
-
-        DB::table('ronda_attendances')->insert($memberIds->take(3)->map(fn (string $userId, int $index) => [
-            'attendance_id' => (string) Str::uuid(),
-            'schedule_id' => $completedSchedule->schedule_id,
-            'user_id' => $userId,
-            'scanned_at' => Carbon::yesterday()->setTime(20, 55)->addMinutes($index * 4),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ])->all());
-
-        DB::table('ronda_attendances')->insert($memberIds->take(2)->map(fn (string $userId, int $index) => [
-            'attendance_id' => (string) Str::uuid(),
-            'schedule_id' => $ongoingSchedule->schedule_id,
-            'user_id' => $userId,
-            'scanned_at' => Carbon::today()->setTime(20, 55)->addMinutes($index * 5),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ])->all());
-
-        $this->seedRondaProgress($completedSchedule, $checkpoints, $coordinator->user_id, Carbon::yesterday()->setTime(21, 12), 1.85, 90);
-        $this->seedRondaProgress($ongoingSchedule, $checkpoints->take(2), $coordinator->user_id, Carbon::today()->setTime(21, 10), 0.92, 38);
-    }
-
-    private function seedRondaProgress(RondaSchedule $schedule, $checkpoints, string $coordinatorId, Carbon $startedAt, float $distance, int $duration): void
-    {
-        $pathData = $checkpoints->values()->map(function (Checkpoint $checkpoint, int $index) use ($startedAt) {
-            return [
-                'lat' => (float) $checkpoint->latitude,
-                'lng' => (float) $checkpoint->longitude,
-                'time' => $startedAt->copy()->addMinutes($index * 18)->toIso8601String(),
-                'name' => $checkpoint->name,
-            ];
-        })->all();
-
-        foreach ($checkpoints->values() as $index => $checkpoint) {
-            PatrolCheckpointLog::create([
-                'schedule_id' => $schedule->schedule_id,
-                'checkpoint_id' => $checkpoint->checkpoint_id,
-                'scanned_by' => $coordinatorId,
-                'scanned_at' => $startedAt->copy()->addMinutes($index * 18),
-            ]);
-        }
-
-        RondaLog::create([
-            'schedule_id' => $schedule->schedule_id,
-            'path_data' => $pathData,
-            'distance_covered' => $distance,
-            'duration' => $duration,
-        ]);
     }
 }

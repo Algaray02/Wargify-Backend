@@ -3,6 +3,8 @@ import api from '@/lib/api';
 const unwrap = (response) => response.data?.data ?? response.data;
 
 const getSchedules = async () => unwrap(await api.get('/api/v1/ronda/schedules'));
+const getHistory = async () => unwrap(await api.get('/api/v1/ronda/history'));
+const getHistoryDetail = async (logId) => unwrap(await api.get(`/api/v1/ronda/history/${logId}`));
 
 const getGroups = async () => unwrap(await api.get('/api/v1/ronda/groups'));
 
@@ -26,6 +28,8 @@ const submitAttendance = async (payload) => unwrap(await api.post('/api/v1/ronda
 
 export const rondaService = {
     getSchedules,
+    getHistory,
+    getHistoryDetail,
     getGroups,
     getCheckpoints,
     createGroup,

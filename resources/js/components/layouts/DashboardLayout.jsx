@@ -41,13 +41,36 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { authService } from '@/services/authService';
+import { useActivities } from '@/hooks/useActivities';
+import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { useEmergencyAlerts } from '@/hooks/useEmergencies';
+import { useFacilityReports } from '@/hooks/useFacilityReports';
 import { toast } from 'sonner';
+
+const relativeTime = (value) => {
+    if (!value) return '-';
+
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+    if (seconds < 60) return 'baru saja';
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} menit lalu`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} jam lalu`;
+
+    return `${Math.floor(hours / 24)} hari lalu`;
+};
 
 export default function DashboardLayout({ children }) {
     const { props, url } = usePage();
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const { data: emergencyAlerts = [] } = useEmergencyAlerts();
+    const { data: facilityReports = [] } = useFacilityReports();
+    const { data: activities = [] } = useActivities();
+    const { data: announcements = [] } = useAnnouncements();
     const authUser = props.auth?.user ?? (() => {
         try {
             return JSON.parse(localStorage.getItem('auth_user') || 'null');
@@ -141,32 +164,54 @@ export default function DashboardLayout({ children }) {
             .slice(0, 8);
     }, [searchItems, searchQuery]);
 
-    const notifications = [
-        {
-            id: 'sos-1',
-            title: 'SOS baru dari warga',
-            description: 'Pak Joko mengirim sinyal darurat di area Blok A.',
-            time: '2 menit lalu',
-            icon: Siren,
-            tone: 'text-[#AD1114] bg-red-50',
-        },
-        {
-            id: 'report-1',
-            title: 'Laporan fasilitas masuk',
-            description: 'Lampu jalan depan rumah A-4 perlu ditindaklanjuti.',
-            time: '18 menit lalu',
-            icon: Building2,
-            tone: 'text-[#00468B] bg-[#E6F6FF]',
-        },
-        {
-            id: 'activity-1',
-            title: 'Kegiatan siap diumumkan',
-            description: 'Rapat Anggaran RT Mei 2026 menunggu publikasi.',
-            time: '1 jam lalu',
-            icon: CalendarDays,
-            tone: 'text-[#2A6B2C] bg-green-50',
-        },
-    ];
+    const notifications = useMemo(() => [
+        ...emergencyAlerts
+            .filter((alert) => alert.status === 'ACTIVE')
+            .map((alert) => ({
+                id: `sos-${alert.alert_id}`,
+                title: 'SOS aktif dari warga',
+                description: `${alert.sender?.full_name ?? 'Warga'}: ${alert.message ?? 'Meminta bantuan darurat.'}`,
+                createdAt: alert.created_at,
+                time: relativeTime(alert.created_at),
+                icon: Siren,
+                tone: 'text-[#AD1114] bg-red-50',
+            })),
+        ...facilityReports
+            .filter((report) => report.status !== 'RESOLVED')
+            .map((report) => ({
+                id: `report-${report.report_id}`,
+                title: report.status === 'IN_PROGRESS' ? 'Laporan sedang diproses' : 'Laporan fasilitas masuk',
+                description: `${report.reporter?.full_name ?? 'Warga'}: ${report.title}`,
+                createdAt: report.created_at,
+                time: relativeTime(report.created_at),
+                icon: Building2,
+                tone: 'text-[#00468B] bg-[#E6F6FF]',
+            })),
+        ...activities
+            .filter((activity) => activity.status === 'DRAFT')
+            .map((activity) => ({
+                id: `activity-${activity.activity_id}`,
+                title: 'Kegiatan belum diumumkan',
+                description: activity.title,
+                createdAt: activity.updated_at ?? activity.created_at,
+                time: relativeTime(activity.updated_at ?? activity.created_at),
+                icon: CalendarDays,
+                tone: 'text-[#2A6B2C] bg-green-50',
+            })),
+        ...announcements
+            .filter((announcement) => announcement.status === 'DRAFT')
+            .map((announcement) => ({
+                id: `announcement-${announcement.announcement_id}`,
+                title: 'Pengumuman masih draf',
+                description: announcement.title,
+                createdAt: announcement.updated_at ?? announcement.created_at,
+                time: relativeTime(announcement.updated_at ?? announcement.created_at),
+                icon: Megaphone,
+                tone: 'text-[#B45309] bg-amber-50',
+            })),
+    ]
+        .sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0))
+        .slice(0, 6), [emergencyAlerts, facilityReports, activities, announcements]);
 
     const currentItem = navItems.find((item) => url === item.path || url.startsWith(item.path + '/')) ?? navItems[0];
     const goToSearchItem = (item) => {
@@ -373,7 +418,7 @@ export default function DashboardLayout({ children }) {
                             aria-label="Buka notifikasi"
                         >
                             <Bell className="size-4" />
-                            <span className="absolute right-2 top-2 size-2 rounded-full bg-[#AD1114]" />
+                            {notifications.length > 0 && <span className="absolute right-2 top-2 size-2 rounded-full bg-[#AD1114]" />}
                         </button>
 
                         {isNotificationOpen && (
@@ -381,11 +426,16 @@ export default function DashboardLayout({ children }) {
                                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                                     <div>
                                         <p className="text-sm font-black text-slate-900">Notifikasi</p>
-                                        <p className="text-xs font-medium text-slate-500">Dummy preview untuk dashboard</p>
+                                        <p className="text-xs font-medium text-slate-500">Data terbaru dari sistem</p>
                                     </div>
                                     <span className="rounded-full bg-[#E6F6FF] px-2 py-1 text-xs font-black text-[#00468B]">{notifications.length}</span>
                                 </div>
                                 <div className="space-y-1 p-2">
+                                    {notifications.length === 0 && (
+                                        <div className="rounded-xl p-4 text-center text-sm font-medium text-slate-500">
+                                            Tidak ada notifikasi baru.
+                                        </div>
+                                    )}
                                     {notifications.map((notification) => {
                                         const Icon = notification.icon;
                                         return (

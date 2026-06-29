@@ -17,6 +17,7 @@ class RondaLog extends Model
 
     protected $fillable = [
         'schedule_id',
+        'session_date',
         'path_data',
         'distance_covered',
         'duration',
@@ -24,6 +25,7 @@ class RondaLog extends Model
 
     protected $casts = [
         'path_data' => 'array',
+        'session_date' => 'date',
         'distance_covered' => 'float',
         'duration' => 'integer',
     ];

@@ -17,6 +17,7 @@ class PatrolCheckpointLog extends Model
 
     protected $fillable = [
         'schedule_id',
+        'session_date',
         'checkpoint_id',
         'scanned_by',
         'scanned_at',

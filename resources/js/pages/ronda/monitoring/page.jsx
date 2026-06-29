@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import RondaRouteMap from '@/components/ronda/RondaRouteMap';
 import { useRondaSchedules } from '@/hooks/useRonda';
 import { ArrowLeft, CheckCircle2, Clock3, MapPin, QrCode, Users } from 'lucide-react';
 
@@ -32,136 +33,30 @@ const durationLabel = (start, end) => {
     return `${hours}j ${rest}m`;
 };
 
-const routePointsFromSchedule = (schedule) => {
+const pathPointsFromSchedule = (schedule) => {
     const pathData = schedule?.ronda_log?.path_data ?? schedule?.rondaLog?.path_data;
-    if (Array.isArray(pathData) && pathData.length > 0) {
-        return pathData
-            .map((point, index) => ({
-                id: `path-${index}`,
-                name: point.name ?? `Titik ${index + 1}`,
-                lat: Number(point.lat),
-                lng: Number(point.lng),
-            }))
-            .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-    }
-
-    const checkpointLogs = schedule?.checkpoint_logs ?? schedule?.checkpointLogs ?? [];
-    if (checkpointLogs.length > 0) {
-        return [...checkpointLogs]
-            .sort((a, b) => new Date(a.scanned_at) - new Date(b.scanned_at))
-            .map((log, index) => ({
-                id: log.log_id ?? `log-${index}`,
-                name: log.checkpoint?.name ?? `Checkpoint ${index + 1}`,
-                lat: Number(log.checkpoint?.latitude),
-                lng: Number(log.checkpoint?.longitude),
-            }))
-            .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-    }
-
-    return (schedule?.checkpoints ?? [])
-        .map((checkpoint) => ({
-            id: checkpoint.checkpoint_id,
-            name: checkpoint.name,
-            lat: Number(checkpoint.latitude),
-            lng: Number(checkpoint.longitude),
+    return Array.isArray(pathData)
+        ? pathData.map((point, index) => ({
+            id: `path-${index}`,
+            name: point.name ?? `Rute ${index + 1}`,
+            lat: Number(point.lat),
+            lng: Number(point.lng),
         }))
-        .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+        : [];
 };
 
-function RouteMap({ points }) {
-    if (points.length === 0) {
-        return <div className="grid h-80 place-items-center rounded-lg border border-dashed bg-slate-50 text-sm text-slate-500">Belum ada data rute.</div>;
-    }
+const checkpointPointsFromSchedule = (schedule) => {
+    const checkpointLogs = schedule?.checkpoint_logs ?? schedule?.checkpointLogs ?? [];
+    const scannedIds = new Set(checkpointLogs.map((log) => log.checkpoint_id));
 
-    const width = 600;
-    const height = 320;
-    const tileSize = 256;
-    const minLat = Math.min(...points.map((point) => point.lat));
-    const maxLat = Math.max(...points.map((point) => point.lat));
-    const minLng = Math.min(...points.map((point) => point.lng));
-    const maxLng = Math.max(...points.map((point) => point.lng));
-    const center = {
-        lat: (minLat + maxLat) / 2,
-        lng: (minLng + maxLng) / 2,
-    };
-    const project = (point, zoom) => {
-        const scale = tileSize * (2 ** zoom);
-        const sinLat = Math.sin((point.lat * Math.PI) / 180);
-
-        return {
-            x: ((point.lng + 180) / 360) * scale,
-            y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
-        };
-    };
-    const zoom = (() => {
-        for (let nextZoom = 18; nextZoom >= 12; nextZoom -= 1) {
-            const topLeft = project({ lat: maxLat, lng: minLng }, nextZoom);
-            const bottomRight = project({ lat: minLat, lng: maxLng }, nextZoom);
-            if (Math.abs(bottomRight.x - topLeft.x) <= width - 96 && Math.abs(bottomRight.y - topLeft.y) <= height - 96) {
-                return nextZoom;
-            }
-        }
-
-        return 12;
-    })();
-    const centerWorld = project(center, zoom);
-    const maxTile = 2 ** zoom;
-    const centerTileX = Math.floor(centerWorld.x / tileSize);
-    const centerTileY = Math.floor(centerWorld.y / tileSize);
-    const tiles = [];
-
-    for (let x = centerTileX - 2; x <= centerTileX + 2; x++) {
-        for (let y = centerTileY - 2; y <= centerTileY + 2; y++) {
-            if (y < 0 || y >= maxTile) continue;
-            const wrappedX = ((x % maxTile) + maxTile) % maxTile;
-            tiles.push({
-                key: `${zoom}-${x}-${y}`,
-                src: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
-                left: width / 2 + (x * tileSize - centerWorld.x),
-                top: height / 2 + (y * tileSize - centerWorld.y),
-            });
-        }
-    }
-    const projected = points.map((point) => ({
-        ...point,
-        x: width / 2 + (project(point, zoom).x - centerWorld.x),
-        y: height / 2 + (project(point, zoom).y - centerWorld.y),
+    return (schedule?.checkpoints ?? []).map((checkpoint) => ({
+        id: checkpoint.checkpoint_id,
+        name: checkpoint.name,
+        lat: Number(checkpoint.latitude),
+        lng: Number(checkpoint.longitude),
+        scanned: scannedIds.has(checkpoint.checkpoint_id),
     }));
-    const polyline = projected.map((point) => `${point.x},${point.y}`).join(' ');
-
-    return (
-        <div className="relative h-80 overflow-hidden rounded-lg border bg-slate-100">
-            <div className="absolute left-1/2 top-1/2 h-[320px] w-[600px] -translate-x-1/2 -translate-y-1/2">
-                {tiles.map((tile) => (
-                    <img
-                        key={tile.key}
-                        src={tile.src}
-                        alt=""
-                        draggable={false}
-                        className="absolute max-w-none select-none"
-                        style={{ width: tileSize, height: tileSize, left: tile.left, top: tile.top }}
-                    />
-                ))}
-                <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 h-full w-full">
-                    <polyline points={polyline} fill="none" stroke="#00468B" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-                    <polyline points={polyline} fill="none" stroke="white" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    {projected.map((point, index) => (
-                        <g key={point.id}>
-                            <circle cx={point.x} cy={point.y} r="11" fill="#00468B" />
-                            <circle cx={point.x} cy={point.y} r="5" fill="white" />
-                            <text x={point.x + 13} y={point.y - 10} fontSize="12" fontWeight="700" fill="#0f172a" paintOrder="stroke" stroke="white" strokeWidth="3">
-                                {index + 1}. {point.name}
-                            </text>
-                        </g>
-                    ))}
-                </svg>
-            </div>
-            <div className="absolute bottom-2 right-2 rounded bg-white/90 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm">
-                OpenStreetMap · Zoom {zoom}
-            </div>
-        </div>
-    );
-}
+};
 
 export default function MonitoringRondaPage() {
     const scheduleId = new URLSearchParams(window.location.search).get('id');
@@ -176,7 +71,8 @@ export default function MonitoringRondaPage() {
     const checkpoints = schedule?.checkpoints ?? [];
     const checkpointLogs = schedule?.checkpoint_logs ?? schedule?.checkpointLogs ?? [];
     const rondaLog = schedule?.ronda_log ?? schedule?.rondaLog;
-    const routePoints = routePointsFromSchedule(schedule);
+    const pathPoints = pathPointsFromSchedule(schedule);
+    const checkpointPoints = checkpointPointsFromSchedule(schedule);
 
     return (
         <DashboardLayout>
@@ -318,11 +214,11 @@ export default function MonitoringRondaPage() {
                                 <div>
                                     <p className="font-semibold text-slate-900">Rute yang Dilalui</p>
                                     <p className="text-sm text-slate-500">
-                                        Jarak {Number(rondaLog?.distance_covered ?? 0).toFixed(2)} km · {routePoints.length} titik rute
+                                        Jarak {Number(rondaLog?.distance_covered ?? 0).toFixed(2)} km · {pathPoints.length} titik path · {checkpointPoints.length} checkpoint
                                     </p>
                                 </div>
                             </div>
-                            <RouteMap points={routePoints} />
+                            <RondaRouteMap pathPoints={pathPoints} checkpointPoints={checkpointPoints} />
                         </div>
                     </>
                 )}

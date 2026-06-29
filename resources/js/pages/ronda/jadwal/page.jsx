@@ -36,7 +36,7 @@ const statusOptions = [
 const statusMeta = {
     SCHEDULED: { label: 'Terjadwal', className: 'border-blue-200 bg-blue-50 text-blue-700' },
     ONGOING: { label: 'Berlangsung', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-    COMPLETED: { label: 'Selesai', className: 'border-slate-200 bg-slate-50 text-slate-700' },
+    COMPLETED: { label: 'Selesai', className: 'border-green-200 bg-green-50 text-green-700' },
     MISSED: { label: 'Terlewat', className: 'border-red-200 bg-red-50 text-red-700' },
 };
 

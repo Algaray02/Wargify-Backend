@@ -21,12 +21,12 @@ import {
 } from "@/components/ui/select";
 import DataPagination from '@/components/common/DataPagination';
 import { usePagination } from '@/hooks/usePagination';
-import { useRondaSchedules } from '@/hooks/useRonda';
+import { useRondaHistory } from '@/hooks/useRonda';
 
 export default function RiwayatRondaPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
-    const { data: schedules = [], isLoading, isError } = useRondaSchedules();
+    const { data: history = [], isLoading, isError } = useRondaHistory();
 
     const formatDate = (value) => value
         ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -36,68 +36,70 @@ export default function RiwayatRondaPage() {
         ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
         : '-';
 
-    const statusLabels = {
-        COMPLETED: 'Selesai',
-        MISSED: 'Terlewat',
-        ONGOING: 'Berlangsung',
-        SCHEDULED: 'Terjadwal',
+    const formatDuration = (value) => {
+        const seconds = Number(value ?? 0);
+
+        if (!seconds) {
+            return '-';
+        }
+
+        const minutes = Math.floor(seconds / 60);
+        const remainSeconds = seconds % 60;
+
+        if (minutes && remainSeconds) {
+            return `${minutes}m ${remainSeconds}d`;
+        }
+
+        if (minutes) {
+            return `${minutes}m`;
+        }
+
+        return `${remainSeconds}d`;
     };
+
     const statusOptions = [
         { value: 'ALL', label: 'Semua status' },
         { value: 'COMPLETED', label: 'Selesai' },
-        { value: 'ONGOING', label: 'Berlangsung' },
-        { value: 'SCHEDULED', label: 'Terjadwal' },
-        { value: 'MISSED', label: 'Terlewat' },
     ];
 
     const riwayatData = useMemo(() => {
-        return schedules
-            .map((schedule) => {
-                const memberCount = schedule.group?.members?.length ?? 0;
-                const attended = schedule.attendances?.length ?? 0;
-                const scanned = schedule.checkpoint_logs?.length ?? schedule.checkpointLogs?.length ?? 0;
-                const assigned = schedule.checkpoints?.length ?? 0;
-                const log = schedule.ronda_log ?? schedule.rondaLog;
-                const duration = Number(log?.duration ?? 0);
-                const distance = Number(log?.distance_covered ?? 0);
-
-                return {
-                    id: schedule.schedule_id,
-                    tanggal: formatDate(schedule.schedule_date),
-                    kehadiran: `${attended}/${memberCount}`,
-                    checkpoint: `${scanned}/${assigned}`,
-                    kelompok: schedule.group?.name ?? '-',
-                    waktu: `${formatTime(schedule.shift_start)}-${formatTime(schedule.shift_end)}`,
-                    status: statusLabels[schedule.status] ?? schedule.status,
-                    statusRaw: schedule.status,
-                    jarak: `${distance.toFixed(2)} km`,
-                    durasi: duration ? `${duration} menit` : '-',
-                };
-            })
+        return history
+            .map((item) => ({
+                id: item.log_id ?? `${item.schedule_id}-${item.session_date}`,
+                tanggal: formatDate(item.session_date),
+                kehadiran: item.attendance_count ?? 0,
+                checkpoint: item.checkpoint_logs_count ?? 0,
+                kelompok: item.group_name ?? '-',
+                waktu: formatTime(item.created_at),
+                status: 'Selesai',
+                statusRaw: 'COMPLETED',
+                jarak: `${Number(item.distance_covered ?? 0).toFixed(2)} km`,
+                durasi: formatDuration(item.duration),
+            }))
             .filter((riwayat) => {
                 const keyword = search.toLowerCase();
-                const matchesSearch = [riwayat.tanggal, riwayat.kelompok, riwayat.status, riwayat.jarak, riwayat.durasi, riwayat.checkpoint]
+                const matchesSearch = [riwayat.tanggal, riwayat.kelompok, riwayat.status, riwayat.jarak, riwayat.durasi, riwayat.checkpoint, riwayat.kehadiran]
                     .some((value) => String(value).toLowerCase().includes(keyword));
                 const matchesStatus = statusFilter === 'ALL' || riwayat.statusRaw === statusFilter;
 
                 return matchesSearch && matchesStatus;
             });
-    }, [schedules, search, statusFilter]);
+    }, [history, search, statusFilter]);
 
     const pagination = usePagination(riwayatData, 10);
 
     return (
         <DashboardLayout>
             <Head title="Riwayat Ronda - Wargify" />
-            
+
             <div className="p-8">
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">Riwayat Pelaksanaan Ronda</h1>
                     <p className="mt-3 max-w-2xl text-sm font-medium text-gray-500">
-                        Evaluasi pelaksanaan ronda, kehadiran, checkpoint, dan durasi patroli.
+                        Data ambil dari ronda logs yang sudah benar-benar berjalan.
                     </p>
                 </div>
-                
+
                 <div className="mb-6 grid gap-3 lg:grid-cols-[1fr_190px]">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -161,12 +163,12 @@ export default function RiwayatRondaPage() {
                                     <TableCell>{riwayat.kelompok}</TableCell>
                                     <TableCell>{riwayat.waktu}</TableCell>
                                     <TableCell>
-                                        <Badge variant={riwayat.status === 'Selesai' ? 'default' : 'secondary'} className={riwayat.status === 'Selesai' ? 'bg-[#00468B]' : 'bg-red-100 text-red-700 hover:bg-red-200'}>
+                                        <Badge variant="default" className="bg-[#00468B]">
                                             {riwayat.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                                <Link href={`/ronda/riwayat/detail?id=${riwayat.id}`}>
+                                        <Link href={`/ronda/riwayat/detail?id=${riwayat.id}`}>
                                             <Button size="sm" className="bg-[#00468B] hover:bg-[#003366] text-white">
                                                 <Eye className="w-4 h-4 mr-2" />
                                                 Lihat
