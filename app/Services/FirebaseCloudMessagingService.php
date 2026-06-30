@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class FirebaseCloudMessagingService
 {
     private const RECIPIENT_ROLES = ['WARGA', 'KETUA_RT', 'BENDAHARA'];
+    private const SOS_RECIPIENT_ROLES = ['WARGA', 'KETUA_RT', 'BENDAHARA'];
 
     public function notifyAnnouncement(Announcement $announcement): array
     {
@@ -25,6 +26,7 @@ class FirebaseCloudMessagingService
             [
                 'type' => 'announcement',
                 'announcement_id' => $announcement->announcement_id,
+                'target_roles' => implode(',', self::RECIPIENT_ROLES),
             ]
         );
     }
@@ -39,6 +41,7 @@ class FirebaseCloudMessagingService
                 'type' => 'activity',
                 'activity_id' => $activity->activity_id,
                 'activity_type' => $activity->type,
+                'target_roles' => implode(',', self::RECIPIENT_ROLES),
             ]
         );
     }
@@ -49,8 +52,8 @@ class FirebaseCloudMessagingService
         $senderName = $alert->sender?->full_name ?? 'Warga';
 
         return $this->sendToUsers(
-            $this->allRecipients(),
-            'DARURAT SOS',
+            $this->allRecipients(self::SOS_RECIPIENT_ROLES),
+            '🚨 DARURAT SOS',
             "{$senderName}: {$alert->message}",
             [
                 'type' => 'sos',
@@ -58,6 +61,7 @@ class FirebaseCloudMessagingService
                 'sender_name' => $senderName,
                 'latitude' => $alert->latitude,
                 'longitude' => $alert->longitude,
+                'target_roles' => implode(',', self::SOS_RECIPIENT_ROLES),
             ]
         );
     }
@@ -68,13 +72,15 @@ class FirebaseCloudMessagingService
             !$activity->targetGroups()->exists()
             && !$activity->invitedUsers()->exists()
         ) {
-            return $this->allRecipients();
+            return $this->allRecipients(self::RECIPIENT_ROLES);
         }
 
         return $this->targetedRecipients(
             $activity->invitedUsers()->select('users.*')->get(),
             $activity->targetGroups()->with('members')->get()->flatMap->members
-        );
+        )->merge($this->roleRecipients(['KETUA_RT']))
+            ->unique('user_id')
+            ->values();
     }
 
     public function sendToUsers(iterable $users, string $title, string $body, array $data = []): array
@@ -119,7 +125,7 @@ class FirebaseCloudMessagingService
                                 'channel_id' => ($stringData['type'] ?? null) === 'sos'
                                     ? 'wargify_sos_alerts'
                                     : 'wargify_notifications',
-                                'sound' => 'default',
+                                'sound' => ($stringData['type'] ?? null) === 'sos' ? 'sos_alert' : 'default',
                             ],
                         ],
                         'apns' => [
@@ -149,10 +155,15 @@ class FirebaseCloudMessagingService
         return ['sent' => $sent, 'failed' => $failed, 'skipped' => false];
     }
 
-    private function allRecipients(): Collection
+    private function allRecipients(array $roles = self::RECIPIENT_ROLES): Collection
+    {
+        return $this->roleRecipients($roles);
+    }
+
+    private function roleRecipients(array $roles): Collection
     {
         return User::query()
-            ->whereIn('role', self::RECIPIENT_ROLES)
+            ->whereIn('role', $roles)
             ->whereNotNull('fcm_token')
             ->get();
     }
