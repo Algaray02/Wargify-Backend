@@ -73,27 +73,9 @@ class WargifySeeder extends Seeder
 
         // 2. KETUA RT & BENDAHARA
         $ketuaRTId = Str::uuid();
-        $ketuaRTFamily = Str::uuid();
-        $ketuaRTHousehold = Str::uuid();
-
-        DB::table('households')->insert([
-            'household_id' => $ketuaRTHousehold,
-            'block_number' => 'A', 'house_number' => '1',
-            'qr_code_data' => 'QR-HOUSE-A-1',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        DB::table('families')->insert([
-            'family_id' => $ketuaRTFamily,
-            'household_id' => $ketuaRTHousehold,
-            'head_of_family_id' => $ketuaRTId,
-            'qr_code_data' => 'QR-FAM-A-1',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
         DB::table('users')->insert([
             'user_id' => $ketuaRTId,
-            'family_id' => $ketuaRTFamily,
+            'family_id' => null,
             'username' => 'vian_rt',
             'password' => Hash::make('password123'),
             'full_name' => 'Vian Maulana Ramadhan',
@@ -103,27 +85,9 @@ class WargifySeeder extends Seeder
         ]);
 
         $bendaharaId = Str::uuid();
-        $bendaharaFamily = Str::uuid();
-        $bendaharaHousehold = Str::uuid();
-
-        DB::table('households')->insert([
-            'household_id' => $bendaharaHousehold,
-            'block_number' => 'A', 'house_number' => '2',
-            'qr_code_data' => 'QR-HOUSE-A-2',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        DB::table('families')->insert([
-            'family_id' => $bendaharaFamily,
-            'household_id' => $bendaharaHousehold,
-            'head_of_family_id' => $bendaharaId,
-            'qr_code_data' => 'QR-FAM-A-2',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
         DB::table('users')->insert([
             'user_id' => $bendaharaId,
-            'family_id' => $bendaharaFamily,
+            'family_id' => null,
             'username' => 'abi_bendahara',
             'password' => Hash::make('password123'),
             'full_name' => 'Abimanyu',
@@ -139,6 +103,8 @@ class WargifySeeder extends Seeder
             ['nama' => 'Rizky Warga', 'username' => 'rizky_warga', 'telepon' => '08111111111', 'blok' => 'A', 'nomor' => '3'],
             ['nama' => 'Siti Nurhaliza', 'username' => 'siti', 'telepon' => '08112222222', 'blok' => 'A', 'nomor' => '4'],
             ['nama' => 'Rahmat Hidayat', 'username' => 'rahmat', 'telepon' => '08113333333', 'blok' => 'B', 'nomor' => '1'],
+            ['nama' => 'Dewi Lestari', 'username' => 'dewi', 'telepon' => '08114444444', 'blok' => 'B', 'nomor' => '2'],
+            ['nama' => 'Agus Santoso', 'username' => 'agus', 'telepon' => '08115555555', 'blok' => 'C', 'nomor' => '1'],
         ];
 
         foreach ($wargaData as $warga) {
@@ -175,10 +141,11 @@ class WargifySeeder extends Seeder
         ]);
 
         DB::table('user_group_members')->insert([
-            ['id' => Str::uuid(), 'group_id' => $bapakGroupId, 'user_id' => $ketuaRTId, 'created_at' => now(), 'updated_at' => now()],
             ['id' => Str::uuid(), 'group_id' => $bapakGroupId, 'user_id' => $wargaIds[0], 'created_at' => now(), 'updated_at' => now()],
             ['id' => Str::uuid(), 'group_id' => $ibuGroupId, 'user_id' => $wargaIds[1], 'created_at' => now(), 'updated_at' => now()],
             ['id' => Str::uuid(), 'group_id' => $pemudaGroupId, 'user_id' => $wargaIds[2], 'created_at' => now(), 'updated_at' => now()],
+            ['id' => Str::uuid(), 'group_id' => $ibuGroupId, 'user_id' => $wargaIds[3], 'created_at' => now(), 'updated_at' => now()],
+            ['id' => Str::uuid(), 'group_id' => $pemudaGroupId, 'user_id' => $wargaIds[4], 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // 5. IURAN CATEGORIES, PERIODS, TARIFFS & PAYMENTS (REVISI DOSEN)
@@ -196,15 +163,15 @@ class WargifySeeder extends Seeder
             ['category_id' => $catKeamananId, 'name' => 'Keamanan', 'slug' => 'keamanan', 'type' => 'MONTHLY', 'default_amount' => 15000.00, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        $periodMeiKeamanan = Str::uuid();
-        $periodMeiKebersihan = Str::uuid();
+        $periodJuniKeamanan = Str::uuid();
+        $periodJuniKebersihan = Str::uuid();
         
         DB::table('iuran_periods')->insert([
             [
-                'period_id' => $periodMeiKeamanan, 'category_id' => $catKeamananId, 'period_name' => 'Keamanan Mei 2026', 'month' => 5, 'year' => 2026, 'payment_qr_code' => 'QR-PAY-MEI-KEAMANAN', 'created_at' => now(), 'updated_at' => now()
+                'period_id' => $periodJuniKeamanan, 'category_id' => $catKeamananId, 'period_name' => 'Keamanan Juni 2026', 'month' => 6, 'year' => 2026, 'payment_qr_code' => 'QR-PAY-JUNI-KEAMANAN', 'created_at' => now(), 'updated_at' => now()
             ],
             [
-                'period_id' => $periodMeiKebersihan, 'category_id' => $catKebersihanId, 'period_name' => 'Kebersihan Mei 2026', 'month' => 5, 'year' => 2026, 'payment_qr_code' => 'QR-PAY-MEI-KEBERSIHAN', 'created_at' => now(), 'updated_at' => now()
+                'period_id' => $periodJuniKebersihan, 'category_id' => $catKebersihanId, 'period_name' => 'Kebersihan Juni 2026', 'month' => 6, 'year' => 2026, 'payment_qr_code' => 'QR-PAY-JUNI-KEBERSIHAN', 'created_at' => now(), 'updated_at' => now()
             ]
         ]);
 
@@ -214,17 +181,17 @@ class WargifySeeder extends Seeder
 
         DB::table('iuran_payments')->insert([
             [
-                'payment_id' => Str::uuid(), 'period_id' => $periodMeiKeamanan, 'family_id' => $wargaFamilyIds[0], 'paid_by_user_id' => $wargaIds[0], 'amount_paid' => 30000.00, 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()
+                'payment_id' => Str::uuid(), 'period_id' => $periodJuniKeamanan, 'family_id' => $wargaFamilyIds[0], 'paid_by_user_id' => $wargaIds[0], 'amount_paid' => 30000.00, 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()
             ],
             [
-                'payment_id' => Str::uuid(), 'period_id' => $periodMeiKeamanan, 'family_id' => $wargaFamilyIds[1], 'paid_by_user_id' => $wargaIds[1], 'amount_paid' => 30000.00, 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()
+                'payment_id' => Str::uuid(), 'period_id' => $periodJuniKeamanan, 'family_id' => $wargaFamilyIds[1], 'paid_by_user_id' => $wargaIds[1], 'amount_paid' => 30000.00, 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()
             ],
         ]);
 
         // 6. CATATAN KAS
         DB::table('treasury_logs')->insert([
             [
-                'log_id' => Str::uuid(), 'type' => 'INCOME', 'source' => 'IURAN_WARGA', 'amount' => 60000.00, 'description' => 'Rekap setoran iuran keamanan warga bulan Mei 2026', 'receipt_url' => null, 'recorded_by' => $bendaharaId, 'created_at' => now(), 'updated_at' => now(),
+                'log_id' => Str::uuid(), 'type' => 'INCOME', 'source' => 'IURAN_WARGA', 'amount' => 60000.00, 'description' => 'Rekap setoran iuran keamanan warga bulan Juni 2026', 'receipt_url' => null, 'recorded_by' => $bendaharaId, 'created_at' => now(), 'updated_at' => now(),
             ],
             [
                 'log_id' => Str::uuid(), 'type' => 'EXPENSE', 'source' => 'PENGELUARAN_RUTIN', 'amount' => 35000.00, 'description' => 'Pembelian lampu pos ronda', 'receipt_url' => '/storage/receipts/lampu-pos-ronda.jpg', 'recorded_by' => $bendaharaId, 'created_at' => now(), 'updated_at' => now(),
@@ -302,7 +269,7 @@ class WargifySeeder extends Seeder
 
         DB::table('activities')->insert([
             [
-                'activity_id' => $rapatId, 'type' => 'RAPAT', 'title' => 'Rapat Anggaran RT Mei 2026', 'description' => 'Pembahasan alokasi kas RT untuk perawatan fasilitas umum.', 'activity_date' => now()->addDays(3), 'location_name' => 'Blok A No. 1', 'household_id' => $ketuaRTHousehold, 'attendance_qr_code' => 'QR-HOUSE-A-1', 'status' => 'ANNOUNCED', 'created_by' => $ketuaRTId, 'created_at' => now(), 'updated_at' => now(),
+                'activity_id' => $rapatId, 'type' => 'RAPAT', 'title' => 'Rapat Anggaran RT Juni 2026', 'description' => 'Pembahasan alokasi kas RT untuk perawatan fasilitas umum.', 'activity_date' => now()->addDays(3), 'location_name' => 'Balai Warga', 'household_id' => null, 'attendance_qr_code' => null, 'status' => 'ANNOUNCED', 'created_by' => $ketuaRTId, 'created_at' => now(), 'updated_at' => now(),
             ],
             [
                 'activity_id' => $kerjaBaktiId, 'type' => 'KEGIATAN_UMUM', 'title' => 'Kerja Bakti Minggu Pagi', 'description' => 'Membersihkan selokan dan area taman warga.', 'activity_date' => now()->subDays(7), 'location_name' => 'Taman Blok A', 'household_id' => null, 'attendance_qr_code' => null, 'status' => 'COMPLETED', 'created_by' => $ketuaRTId, 'created_at' => now(), 'updated_at' => now(),
